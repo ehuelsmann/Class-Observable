@@ -8,3 +8,4 @@ t/inherited.t
 t/DeeJay.pm
 t/Song.pm
 
+META.yml                                Module meta-data (added by MakeMaker)
