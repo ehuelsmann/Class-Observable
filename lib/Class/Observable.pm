@@ -5,11 +5,11 @@ package Class::Observable;
 use strict;
 use Class::ISA;
 
-$Class::Observable::VERSION = '0.03';
+$Class::Observable::VERSION = '1.00';
 
 my ( $DEBUG );
 sub DEBUG     { return $DEBUG; }
-sub DEBUG_SET { $DEBUG = $_[0] }
+sub SET_DEBUG { $DEBUG = $_[0] }
 
 
 my %O = ();
@@ -22,6 +22,7 @@ my %P = ();
 sub add_observer {
     my ( $item, $observer ) = @_;
     DEBUG && warn "Adding observer [$observer] to [", _describe_item( $item ), "]\n";
+    $O{ $item } ||= [];
     push @{ $O{ $item } }, $observer;
     return scalar @{ $O{ $item } };
 }
@@ -66,7 +67,6 @@ sub delete_observers {
 
 # Tell all observers that a state-change has occurred. No return
 # value.
-# TODO: Should we wrap the call in an eval {}?
 
 sub notify_observers {
     my ( $item, $action, @params ) = @_;
@@ -94,16 +94,30 @@ sub get_observers {
     my $class = ref $item;
     if ( $class ) {
         DEBUG && warn "Retrieving object-specific observers from [", _describe_item( $item ), "]\n";
-        push @observers, @{ $O{ $item } } if ( ref $O{ $item } eq 'ARRAY' );
+        push @observers, $item->_obs_get_observers_scoped;
     }
     else {
         $class = $item;
     }
-    DEBUG && warn "Retrieving class-specific observers from [$class]\n";
-    push @observers, @{ $O{ $class } } if ( ref $O{ $class } eq 'ARRAY' );
-    push @observers, $item->_obs_retrieve_parent_observers;
+    DEBUG && warn "Retrieving class-specific observers from [$class] ",
+                  "and its parents\n";
+    push @observers, $class->_obs_get_observers_scoped,
+                     $class->_obs_get_parent_observers;
     DEBUG && warn "Found observers [", join( '][', @observers ), "]\n";
     return @observers;
+}
+
+
+# Copy all observers from one item to another. This also copies
+# observers from parents.
+
+sub copy_observers {
+    my ( $item_from, $item_to ) = @_;
+    my @from_observers = $item_from->get_observers;
+    foreach my $observer ( @from_observers ) {
+        $item_to->add_observer( $observer );
+    }
+    return scalar @from_observers;
 }
 
 
@@ -117,29 +131,43 @@ sub count_observers {
 
 # Find observers from parents
 
-sub _obs_retrieve_parent_observers {
+sub _obs_get_parent_observers {
     my ( $item ) = @_;
     my $class = ref $item || $item;
 
+    # We only find the parents the first time, so if you muck with
+    # @ISA you'll get unexpected behavior...
+
     unless ( ref $P{ $class } eq 'ARRAY' ) {
         my @parent_path = Class::ISA::super_path( $class );
-        DEBUG && warn "Finding observers from parents [",
-                      join( '][', @parent_path ), "]\n";
+        DEBUG && warn "Finding observers from parent classes ",
+                      '[', join( '] [', @parent_path ), "]\n";
         my @observable_parents = ();
         foreach my $parent ( @parent_path ) {
             next if ( $parent eq 'Class::Observable' );
             if ( $parent->isa( 'Class::Observable' ) ) {
                 push @observable_parents, $parent;
             }
-            $P{ $class } = \@observable_parents;
         }
+        $P{ $class } = \@observable_parents;
+        DEBUG && warn "Found observable parents for [$class]: ",
+                      '[', join( '] [', @observable_parents ), "]\n";
     }
 
     my @parent_observers = ();
     foreach my $parent ( @{ $P{ $class } } ) {
-        push @parent_observers, @{ $O{ $parent } } if ( ref $O{ $parent } );
+        push @parent_observers, $parent->_obs_get_observers_scoped;
     }
     return @parent_observers;
+}
+
+
+# Return observers ONLY for the specified item
+
+sub _obs_get_observers_scoped {
+    my ( $item ) = @_;
+    return () unless ( ref $O{ $item } eq 'ARRAY' );
+    return @{ $O{ $item } };
 }
 
 
@@ -167,39 +195,40 @@ Class::Observable - Allow other classes and objects to respond to events in your
 =head1 SYNOPSIS
 
   # Define an observable class
-
+ 
   package My::Object;
-
+ 
   use base qw( Class::Observable );
-
+ 
   # Tell all classes/objects observing this object that a state-change
   # has occurred
-
+ 
   sub create {
      my ( $self ) = @_;
-     eval { $self->_perform_save() };
+     eval { $self->_perform_create() };
      if ( $@ ) {
          My::Exception->throw( "Error saving: $@" );
      }
      $self->notify_observers();
   }
-
-  # Same thing, except make the type of change explicit
-
-  sub update {
+ 
+  # Same thing, except make the type of change explicit and pass
+  # arguments.
+ 
+  sub edit {
      my ( $self ) = @_;
      my %old_values = $self->extract_values;
-     eval { $self->_perform_save() };
+     eval { $self->_perform_edit() };
      if ( $@ ) {
          My::Exception->throw( "Error saving: $@" );
      }
-     $self->notify_observers( 'update', old_values => \%old_values );
+     $self->notify_observers( 'edit', old_values => \%old_values );
   }
-
+ 
   # Define an observer
-
+ 
   package My::Observer;
-
+ 
   sub update {
      my ( $class, $object, $action ) = @_;
      unless ( $action ) {
@@ -209,72 +238,72 @@ Class::Observable - Allow other classes and objects to respond to events in your
      $class->_on_save( $object )   if ( $action eq 'save' );
      $class->_on_update( $object ) if ( $action eq 'update' );
   }
-
+ 
   # Register the observer class with all instances of the observable
   # class
-
+ 
   My::Object->add_observer( 'My::Observer' );
-
+ 
   # Register the observer class with a single instance of the
   # observable class
-
+ 
   my $object = My::Object->new( 'foo' );
   $object->add_observer( 'My::Observer' );
-
+ 
   # Register an observer object the same way
-
+ 
   my $observer = My::Observer->new( 'bar' );
   My::Object->add_observer( $observer );
   my $object = My::Object->new( 'foo' );
   $object->add_observer( $observer );
-
+ 
   # Register an observer using a subroutine
-
+ 
   sub catch_observation { ... }
-
+ 
   My::Object->add_observer( \&catch_observation );
   my $object = My::Object->new( 'foo' );
   $object->add_observer( \&catch_observation );
-
+ 
   # Define the observable class as a parent and allow the observers to
   # be used by the child
-
+ 
   package My::Parent;
-
+ 
   use strict;
   use base qw( Class::Observable );
-
+ 
   sub prepare_for_bed {
       my ( $self ) = @_;
       $self->notify_observers( 'prepare_for_bed' );
   }
-
+ 
   sub brush_teeth {
       my ( $self ) = @_;
       $self->_brush_teeth( time => 45 );
       $self->_floss_teeth( time => 30 );
       $self->_gargle( time => 30 );
   }
-
+ 
   sub wash_face { ... }
-
-
+ 
+ 
   package My::Child;
-
+ 
   use strict;
   use base qw( My::Parent );
-
+ 
   sub brush_teeth {
       my ( $self ) = @_;
       $self->_wet_toothbrush();
   }
-
+ 
   sub wash_face { return }
-
+ 
   # Create a class-based observer
-
+ 
   package My::ParentRules;
-
+ 
   sub update {
       my ( $item, $action ) = @_;
       if ( $action eq 'prepare_for_bed' ) {
@@ -282,9 +311,9 @@ Class::Observable - Allow other classes and objects to respond to events in your
           $item->wash_face;
       }
   }
-
+ 
   My::Parent->add_observer( __PACKAGE__ );
-
+ 
   $parent->prepare_for_bed # brush, floss, gargle, and wash face
   $child->prepare_for_bed  # pretend to brush, pretend to wash face
 
@@ -304,7 +333,7 @@ can therefore control when the messages get sent to the obsevers.
 The behavior of the observers is up to you. However, be aware that we
 do not do any error handling from calls to the observers. If an
 observer throws a C<die>, it will bubble up to the observed item and
-require handling there.
+require handling there. So be careful.
 
 Throughout this documentation we refer to an 'observed item' or
 'observable item'. This ambiguity refers to the fact that both a class
@@ -350,27 +379,27 @@ So given the following example:
      use base qw( Class::Observable );
      sub new { return bless( {}, $_[0] ) }
      sub yodel { $_[0]->notify_observers }
-
+ 
      package Baz;
      use base qw( Foo );
      sub yell { $_[0]->notify_observers }
  }
-
+ 
  sub observer_a { print "Observation A from [$_[0]]\n" }
  sub observer_b { print "Observation B from [$_[0]]\n" }
  sub observer_c { print "Observation C from [$_[0]]\n" }
-
+ 
  Foo->add_observer( \&observer_a );
  Baz->add_observer( \&observer_b );
-
+ 
  my $foo = Foo->new;
  print "Yodeling...\n";
  $foo->yodel;
-
+ 
  my $baz_a = Baz->new;
  print "Yelling A...\n";
  $baz_a->yell;
-
+ 
  my $baz_b = Baz->new;
  $baz_b->add_observer( \&observer_c );
  print "Yelling B...\n";
@@ -450,7 +479,7 @@ B<Subroutine observer>:
 B<Class observer>:
 
  package My::ObserverC;
-
+ 
  sub update {
      my ( $class, $item, $action, $params ) = @_;
      return unless ( $action eq 'update' );
@@ -460,12 +489,12 @@ B<Class observer>:
 B<Object observer>:
 
  package My::ObserverO;
-
+ 
  sub new {
      my ( $class, $type ) = @_;
      return bless ( { type => $type }, $class );
  }
-
+ 
  sub update {
      my ( $self, $item, $action, $params ) = @_;
      return unless ( $action eq $self->{type} );
@@ -528,10 +557,10 @@ Example:
  # person
  my $person = Person->fetch( 3843857 );
  $person->add_observer( \&salary_check );
-
+ 
  # Add a salary check (as a class observer) for all people
  Person->add_observer( 'Validate::Salary' );
-
+ 
  # Add a salary check (as an object observer) for all people
  my $salary_policy = Company::Policy::Salary->new( 'pretax' );
  Person->add_observer( $salary_policy );
@@ -553,7 +582,7 @@ Examples:
 
  # Remove a class observer from an object
  $person->delete_observer( 'Lech::Ogler' );
-
+ 
  # Remove an object observer from a class
  Person->delete_observer( $salary_policy );
 
@@ -589,6 +618,32 @@ Example:
      print "Object"     if ( ref $o and ref $o ne 'CODE' );
      print "\n";
  }
+
+B<copy_observers( $copy_to_observable )>
+
+Copies all observers from one observed item to another. We get all
+observers from the source, including the observers of parents. (Behind
+the scenes we just use C<get_observers(), so read that for what we
+copy.)
+
+We make no effort to ensure we don't copy an observer that's already
+watching the object we're copying to. If this happens you will appear
+to get duplicate observations. (But it shouldn't happen often, if
+ever.)
+
+Returns: number of observers copied
+
+Example:
+
+ # Copy all observers of the 'Person' class to also observe the
+ # 'Address' class
+ 
+ Person->copy_observers( Address );
+ 
+ # Copy all observers of a $person to also observe a particular
+ # $address
+ 
+ $person->copy_observers( $address )
 
 B<count_observers()>
 
