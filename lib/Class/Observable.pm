@@ -309,27 +309,16 @@ of observed item observers can expect.
 
 So given the following example:
 
- package Foo;
+ BEGIN {
+     package Foo;
+     use base qw( Class::Observable );
+     sub new { return bless( {}, $_[0] ) }
+     sub yodel { $_[0]->notify_observers }
 
- use base qw( Class::Observable );
-
- sub new { return bless( {}, $_[0] ) }
-
- sub yodel { $_[0]->notify_observers }
-
- package Bar;
-
- use base qw( Foo );
-
- sub scream { $_[0]->notify_observers }
-
- package Baz;
-
- use base qw( Foo );
-
- sub yell { $_[0]->notify_observers }
-
- package main;
+     package Baz;
+     use base qw( Foo );
+     sub yell { $_[0]->notify_observers }
+ }
 
  sub observer_a { print "Observation A from [$_[0]]\n" }
  sub observer_b { print "Observation B from [$_[0]]\n" }
