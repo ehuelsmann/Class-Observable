@@ -1,9 +1,16 @@
 Revision history for Perl extension Class::Observable.
 
+1.00  Fri May  2 09:58:57 EDT 2003
+
+      - Add copy_observers() so you can copy observers from one
+      observed item to another.
+
+      - We're stable enough to be a version 1.x!
+
 0.03  Mon Aug 19 23:02:13 EDT 2002
 
       - Be able to turn debugging on and off programmatically via
-      C<SET_DEBUG()
+      SET_DEBUG()
 
       - Allow any number of paramters sent via notify_observers(). (This is
       Perl, after all...). This is a very small API change and fully
