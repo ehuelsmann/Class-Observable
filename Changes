@@ -1,5 +1,9 @@
 Revision history for Perl extension Class::Observable.
 
+1.03  Wed Jun 16 19:45:18 EDT 2004
+
+      Fixed typo in Observable.pm, thanks to Dan Langille.
+
 1.02  Tue Nov 11 23:50:33 EST 2003
 
       - Rename 'delete_observers' to 'delete_all_observers' (preserving

@@ -5,7 +5,7 @@ package Class::Observable;
 use strict;
 use Class::ISA;
 
-$Class::Observable::VERSION = '1.02';
+$Class::Observable::VERSION = '1.03';
 
 my ( $DEBUG );
 sub DEBUG     { return $DEBUG; }
@@ -363,8 +363,8 @@ variables. Whenever it wants to let observers know about a
 state-change or occurrence in the object, it just needs to call
 C<notify_observers()>.
 
-As noted above, the whether the observed item is a class or object
-does not matter -- the behavior is the same. The difference comes in
+As noted above, whether the observed item is a class or object does
+not matter -- the behavior is the same. The difference comes in
 determining which observers are to be notified:
 
 =over 4
