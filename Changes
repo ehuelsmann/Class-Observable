@@ -1,5 +1,14 @@
 Revision history for Perl extension Class::Observable.
 
+1.02  Tue Nov 11 00:25:34 EST 2003
+
+      - Rename 'delete_observers' to 'delete_all_observers' (preserving
+      old name for compatibility)
+
+      - add_observer() and delete_observer() take one *or more*
+      observers now. Previously they only took one. 100% compatible
+      with old version.
+
 1.01  Wed Oct 22 08:30:14 EDT 2003
 
       Fix tiny POD bug (thanks to forehead@4red.org for spotting).

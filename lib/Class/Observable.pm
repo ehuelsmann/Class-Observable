@@ -5,7 +5,7 @@ package Class::Observable;
 use strict;
 use Class::ISA;
 
-$Class::Observable::VERSION = '1.01';
+$Class::Observable::VERSION = '1.02';
 
 my ( $DEBUG );
 sub DEBUG     { return $DEBUG; }
@@ -16,47 +16,48 @@ my %O = ();
 my %P = ();
 
 
-# Add a single observer (class name, object or subroutine) to an
+# Add one or more observers (class name, object or subroutine) to an
 # observable thingy (class or object). Return new number of observers.
 
 sub add_observer {
-    my ( $item, $observer ) = @_;
-    DEBUG && warn "Adding observer [$observer] to ",
-                  "[", _describe_item( $item ), "]\n";
+    my ( $item, @observers ) = @_;
     $O{ $item } ||= [];
-    push @{ $O{ $item } }, $observer;
+    foreach my $observer ( @observers ) {
+        DEBUG && warn "Adding observer [$observer] to ",
+                      "[", _describe_item( $item ), "]\n";
+        push @{ $O{ $item } }, $observer;
+    }
     return scalar @{ $O{ $item } };
 }
 
 
-# Remove a single observer from an observable thingy. Return new
+# Remove one or more observers from an observable thingy. Return new
 # number of observers.
 # TODO: Will this work with subroutines?
 
 sub delete_observer {
-    my ( $item, $observer_to_remove ) = @_;
-    DEBUG && warn "Removing observer [$observer_to_remove] from ",
-                  "[", _describe_item( $item ), "]\n";
-    return 0 unless ( ref $O{ $item } eq 'ARRAY' );
-
-    my @new_observers = ();
-    foreach my $obs ( @{ $O{ $item } } ) {
-        if ( $obs == $observer_to_remove ) {
+    my ( $item, @observers_to_remove ) = @_;
+    unless ( ref $O{ $item } eq 'ARRAY' ) {
+        return 0;
+    }
+    my %ok_observers = map { $_ => 1 } @{ $O{ $item } };
+    foreach my $observer_to_remove ( @observers_to_remove ) {
+        DEBUG && warn "Removing observer [$observer_to_remove] from ",
+                      "[", _describe_item( $item ), "]\n";
+        my $removed = delete $ok_observers{ $observer_to_remove };
+        if ( $removed ) {
             DEBUG && warn "Found observer [$observer_to_remove]; removing\n";
         }
-        else {
-            push @new_observers, $obs;
-        }
     }
-    $O{ $item } = \@new_observers;
-    return scalar @new_observers;
+    $O{ $item } = [ keys %ok_observers ];
+    return scalar keys %ok_observers;
 }
 
 
 # Remove all observers from an observable thingy. Return number of
 # observers removed.
 
-sub delete_observers {
+sub delete_all_observers {
     my ( $item ) = @_;
     DEBUG && warn "Removing all observers from ",
                   "[", _describe_item( $item ), "]\n";
@@ -65,6 +66,13 @@ sub delete_observers {
     $num_removed = scalar @{ $O{ $item } };
     $O{ $item } = [];
     return $num_removed;
+}
+
+
+# Backward compatibility
+
+sub delete_observers {
+    goto \&delete_all_observers;
 }
 
 
@@ -520,7 +528,7 @@ suffice:
 
   sub DESTROY {
       my ( $self ) = @_;
-      $self->delete_observers;
+      $self->delete_all_observers;
   }
 
 =head1 METHODS
@@ -550,10 +558,11 @@ Example:
      }
  }
 
-B<add_observer( $observer )>
+B<add_observer( @observers )>
 
-Adds the observer C<$observer> to the observed item. The observer can
-be a class name, object or subroutine -- see L<Types of Observers>.
+Adds the one or more observers (C<@observer>) to the observed
+item. Each observer can be a class name, object or subroutine -- see
+L<Types of Observers>.
 
 Returns: The number of observers now observing the item.
 
@@ -571,16 +580,16 @@ Example:
  my $salary_policy = Company::Policy::Salary->new( 'pretax' );
  Person->add_observer( $salary_policy );
 
-B<delete_observer( $observer )>
+B<delete_observer( @observers )>
 
-Removes the observer C<$observer> from the observed item. The observer
-can be a class name, object or subroutine -- see L<Types of
-Observers>.
+Removes the one or more observers (C<@observer>) from the observed
+item. Each observer can be a class name, object or subroutine -- see
+L<Types of Observers>.
 
-Note that this only deletes C<$observer> from the observed item
-itself. It does not remove C<$observer> from any parent
-classes. Therefore, if C<$observer> is not registered directly with
-the observed item nothing will be removed.
+Note that this only deletes each observer from the observed item
+itself. It does not remove observer from any parent
+classes. Therefore, if an observer is not registered directly with the
+observed item nothing will be removed.
 
 Returns: The number of observers now observing the item.
 
@@ -592,7 +601,7 @@ Examples:
  # Remove an object observer from a class
  Person->delete_observer( $salary_policy );
 
-B<delete_observers()>
+B<delete_all_observers()>
 
 Removes all observers from the observed item.
 
@@ -600,11 +609,15 @@ Note that this only deletes observers registered directly with the
 observed item. It does not clear out observers from any parent
 classes.
 
+B<WARNING>: This method was renamed from C<delete_observers>. The
+C<delete_observers> call still works but is deprecated and will
+eventually be removed.
+
 Returns: The number of observers removed.
 
 Example:
 
- Person->delete_observers();
+ Person->delete_all_observers();
 
 B<get_observers()>
 

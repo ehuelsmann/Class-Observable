@@ -53,7 +53,7 @@ is( $observations[6], "Observation B from [Baz]", "Catch notification from child
 is( $observations[7], "Observation A from [Baz]", "Catch parent notification from child (after object add)" );
 
 
-is( $baz_b->delete_observers, 1, 'Delete object observers' );
-is( $baz_c->delete_observers, 0, 'Delete non-existent object observers' );
-is( Baz->delete_observers, 1, 'Delete child observers' );
-is( Foo->delete_observers, 1, 'Delete parent observers' );
+is( $baz_b->delete_all_observers, 1, 'Delete object observers' );
+is( $baz_c->delete_all_observers, 0, 'Delete non-existent object observers' );
+is( Baz->delete_all_observers, 1, 'Delete child observers' );
+is( Foo->delete_all_observers, 1, 'Delete parent observers' );

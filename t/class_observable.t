@@ -51,12 +51,12 @@ is( $num_observers_copied, 3,
 is( $playlist[1]->count_observers, 5,
     'New object has correct number of observers' );
 
-is( $playlist[0]->delete_observers, 1,
+is( $playlist[0]->delete_all_observers, 1,
     'Delete object-level observers' );
-is( $playlist[1]->delete_observers, 3,
+is( $playlist[1]->delete_all_observers, 3,
     'Delete object-level observers' );
 is( Song->delete_observer( $dj ), 1,
     'Delete object from class-level observers' );
-is( Song->delete_observers, 1,
+is( Song->delete_all_observers, 1,
     'Delete remaining class-level observers' );
 
