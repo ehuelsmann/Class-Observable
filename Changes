@@ -1,5 +1,9 @@
 Revision history for Perl extension Class::Observable.
 
+1.01  Wed Oct 22 08:30:14 EDT 2003
+
+      Fix tiny POD bug (thanks to forehead@4red.org for spotting).
+
 1.00  Fri May  2 09:58:57 EDT 2003
 
       - Add copy_observers() so you can copy observers from one

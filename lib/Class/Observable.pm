@@ -5,7 +5,7 @@ package Class::Observable;
 use strict;
 use Class::ISA;
 
-$Class::Observable::VERSION = '1.00';
+$Class::Observable::VERSION = '1.01';
 
 my ( $DEBUG );
 sub DEBUG     { return $DEBUG; }
@@ -21,7 +21,8 @@ my %P = ();
 
 sub add_observer {
     my ( $item, $observer ) = @_;
-    DEBUG && warn "Adding observer [$observer] to [", _describe_item( $item ), "]\n";
+    DEBUG && warn "Adding observer [$observer] to ",
+                  "[", _describe_item( $item ), "]\n";
     $O{ $item } ||= [];
     push @{ $O{ $item } }, $observer;
     return scalar @{ $O{ $item } };
@@ -34,7 +35,8 @@ sub add_observer {
 
 sub delete_observer {
     my ( $item, $observer_to_remove ) = @_;
-    DEBUG && warn "Removing observer [$observer_to_remove] from [", _describe_item( $item ), "]\n";
+    DEBUG && warn "Removing observer [$observer_to_remove] from ",
+                  "[", _describe_item( $item ), "]\n";
     return 0 unless ( ref $O{ $item } eq 'ARRAY' );
 
     my @new_observers = ();
@@ -56,7 +58,8 @@ sub delete_observer {
 
 sub delete_observers {
     my ( $item ) = @_;
-    DEBUG && warn "Removing all observers from [", _describe_item( $item ), "]\n";
+    DEBUG && warn "Removing all observers from ",
+                  "[", _describe_item( $item ), "]\n";
     my $num_removed = 0;
     return $num_removed unless ( ref $O{ $item } eq 'ARRAY' );
     $num_removed = scalar @{ $O{ $item } };
@@ -70,7 +73,8 @@ sub delete_observers {
 
 sub notify_observers {
     my ( $item, $action, @params ) = @_;
-    DEBUG && warn "Notification from [", _describe_item( $item ), "] with [$action]\n";
+    DEBUG && warn "Notification from [", _describe_item( $item ), "] ",
+                  "with [$action]\n";
     my @observers = $item->get_observers;
     foreach my $o ( @observers ) {
         DEBUG && warn "Notifying observer [$o]\n";
@@ -89,11 +93,13 @@ sub notify_observers {
 
 sub get_observers {
     my ( $item ) = @_;
-    DEBUG && warn "Retrieving observers using [", _describe_item( $item ), "]\n";
+    DEBUG && warn "Retrieving observers using ",
+                  "[", _describe_item( $item ), "]\n";
     my @observers = ();
     my $class = ref $item;
     if ( $class ) {
-        DEBUG && warn "Retrieving object-specific observers from [", _describe_item( $item ), "]\n";
+        DEBUG && warn "Retrieving object-specific observers from ",
+                      "[", _describe_item( $item ), "]\n";
         push @observers, $item->_obs_get_observers_scoped;
     }
     else {
@@ -623,7 +629,7 @@ B<copy_observers( $copy_to_observable )>
 
 Copies all observers from one observed item to another. We get all
 observers from the source, including the observers of parents. (Behind
-the scenes we just use C<get_observers(), so read that for what we
+the scenes we just use C<get_observers()>, so read that for what we
 copy.)
 
 We make no effort to ensure we don't copy an observer that's already
@@ -671,12 +677,10 @@ L<http://java.sun.com/j2se/1.4/docs/api/java/util/Observable.html>
 
 L<http://java.sun.com/j2se/1.4/docs/api/java/util/Observer.html>
 
-"Observer and Observable", Todd Sundsted
-
+"Observer and Observable", Todd Sundsted,
 L<http://www.javaworld.com/javaworld/jw-10-1996/jw-10-howto_p.html>
 
-"Java Tip 29: How to decouple the Observer/Observable object model", Albert Lopez
-
+"Java Tip 29: How to decouple the Observer/Observable object model", Albert Lopez,
 L<http://www.javaworld.com/javatips/jw-javatip29_p.html>
 
 =head1 AUTHOR
