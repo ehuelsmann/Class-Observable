@@ -5,30 +5,35 @@ package Class::Observable;
 use strict;
 use Class::ISA;
 
-$Class::Observable::VERSION = '0.02';
+$Class::Observable::VERSION = '0.03';
 
-use constant DEBUG => 0;
+my ( $DEBUG );
+sub DEBUG     { return $DEBUG; }
+sub DEBUG_SET { $DEBUG = $_[0] }
+
 
 my %O = ();
 my %P = ();
 
+
 # Add a single observer (class name, object or subroutine) to an
-# observable thingy (class or object)
+# observable thingy (class or object). Return new number of observers.
 
 sub add_observer {
     my ( $item, $observer ) = @_;
-    DEBUG && warn "Adding observer [$observer] to [$item]\n";
+    DEBUG && warn "Adding observer [$observer] to [", _describe_item( $item ), "]\n";
     push @{ $O{ $item } }, $observer;
     return scalar @{ $O{ $item } };
 }
 
 
-# Remove a single observer from an observable thingy.
+# Remove a single observer from an observable thingy. Return new
+# number of observers.
 # TODO: Will this work with subroutines?
 
 sub delete_observer {
     my ( $item, $observer_to_remove ) = @_;
-    DEBUG && warn "Removing observer [$observer_to_remove] from [$item]\n";
+    DEBUG && warn "Removing observer [$observer_to_remove] from [", _describe_item( $item ), "]\n";
     return 0 unless ( ref $O{ $item } eq 'ARRAY' );
 
     my @new_observers = ();
@@ -45,11 +50,12 @@ sub delete_observer {
 }
 
 
-# Remove all observers from an observable thingy.
+# Remove all observers from an observable thingy. Return number of
+# observers removed.
 
 sub delete_observers {
     my ( $item ) = @_;
-    DEBUG && warn "Removing all observers from [$item]\n";
+    DEBUG && warn "Removing all observers from [", _describe_item( $item ), "]\n";
     my $num_removed = 0;
     return $num_removed unless ( ref $O{ $item } eq 'ARRAY' );
     $num_removed = scalar @{ $O{ $item } };
@@ -58,34 +64,36 @@ sub delete_observers {
 }
 
 
-# Tell all observers that a state-change has occurred
+# Tell all observers that a state-change has occurred. No return
+# value.
+# TODO: Should we wrap the call in an eval {}?
 
 sub notify_observers {
-    my ( $item, $action, $params ) = @_;
-    DEBUG && warn "Notification from [$item] with [$action]\n";
+    my ( $item, $action, @params ) = @_;
+    DEBUG && warn "Notification from [", _describe_item( $item ), "] with [$action]\n";
     my @observers = $item->get_observers;
     foreach my $o ( @observers ) {
         DEBUG && warn "Notifying observer [$o]\n";
         if ( ref $o eq 'CODE' ) {
-            $o->( $item, $action, $params );
+            $o->( $item, $action, @params );
         }
         else {
-            $o->update( $item, $action, $params );
+            $o->update( $item, $action, @params );
         }
     }
 }
 
 
 # Retrieve *all* observers for a particular thingy. (See docs for what
-# *all* means.)
+# *all* means.) Returns a list of observers
 
 sub get_observers {
     my ( $item ) = @_;
-    DEBUG && warn "Retrieving observers using [$item]\n";
+    DEBUG && warn "Retrieving observers using [", _describe_item( $item ), "]\n";
     my @observers = ();
     my $class = ref $item;
     if ( $class ) {
-        DEBUG && warn "Retrieving object-specific observers from [$item]\n";
+        DEBUG && warn "Retrieving object-specific observers from [", _describe_item( $item ), "]\n";
         push @observers, @{ $O{ $item } } if ( ref $O{ $item } eq 'ARRAY' );
     }
     else {
@@ -101,7 +109,7 @@ sub get_observers {
 
 sub count_observers {
     my ( $item ) = @_;
-    DEBUG && warn "Counting observers using [$item]\n";
+    DEBUG && warn "Counting observers using [", _describe_item( $item ), "]\n";
     my @observers = $item->get_observers;
     return scalar @observers;
 }
@@ -133,6 +141,20 @@ sub _obs_retrieve_parent_observers {
     }
     return @parent_observers;
 }
+
+
+# Used in debugging
+
+sub _describe_item {
+    my ( $item ) = @_;
+    return "Class $item" unless ( ref $item );
+    my $item_class = ref $item;
+    if ( $item->can( 'id' ) ) {
+        return "Object of class $item_class with ID ", $item->id();
+    }
+    return "Instance of class $item_class";
+}
+
 
 1;
 
@@ -166,11 +188,12 @@ Class::Observable - Allow other classes and objects to respond to events in your
 
   sub update {
      my ( $self ) = @_;
+     my %old_values = $self->extract_values;
      eval { $self->_perform_save() };
      if ( $@ ) {
          My::Exception->throw( "Error saving: $@" );
      }
-     $self->notify_observers( 'update' );
+     $self->notify_observers( 'update', old_values => \%old_values );
   }
 
   # Define an observer
@@ -277,6 +300,11 @@ may occur at the beginning, in the middle or end of a method. In
 addition, the object B<knows> that it is being observed. It just does
 not know how many or what types of objects are doing the observing. It
 can therefore control when the messages get sent to the obsevers.
+
+The behavior of the observers is up to you. However, be aware that we
+do not do any error handling from calls to the observers. If an
+observer throws a C<die>, it will bubble up to the observed item and
+require handling there.
 
 Throughout this documentation we refer to an 'observed item' or
 'observable item'. This ambiguity refers to the fact that both a class
@@ -462,12 +490,15 @@ suffice:
 
 =head1 METHODS
 
-B<notify_observers( [ $action, \%params ] )>
+B<notify_observers( [ $action, @params ] )>
 
 Called from the observed item, this method sends a message to all
 observers that a state-change has occurred. The observed item can
 optionally include additional information about the type of change
-that has occurred and any additional parameters.
+that has occurred and any additional parameters C<@params> which get
+passed along to each observer. The observed item should indicate in
+its API what information will be passed along to the observers in
+C<$action> and C<@params>.
 
 Returns: Nothing
 
@@ -477,7 +508,7 @@ Example:
      my ( $self ) = @_;
      eval { $self->_remove_item_from_datastore };
      if ( $@ ) {
-         $self->notify_observers( 'remove-fail' );
+         $self->notify_observers( 'remove-fail', error_message => $@ );
      }
      else {
          $self->notify_observers( 'remove' );
@@ -565,21 +596,33 @@ Counts the number of observers for an observed item, including ones
 inherited from its class and/or parent classes. See L<Observable
 Classes and Objects> for more information.
 
+B<SET_DEBUG( $bool )>
+
+Turn debugging on or off. This will output warn(s) at appropriate
+times during the process.
+
+Note that the warnings will try to get information about an object if
+that is what calls C<notify_observers()>. If you have an C<id()>
+method in the object it will be called, otherwise it will be described
+as "an instance of class Foo".
+
 =head1 RESOURCES
 
-APIs for java.util.Observable and java.util.Observer. (Docs below are
-included with JDK 1.3, but the interfaces have not changed.)
+APIs for C<java.util.Observable> and C<java.util.Observer>. (Docs
+below are included with JDK 1.4 but have been consistent for some
+time.)
 
-http://java.sun.com/j2se/1.3/docs/api/java/util/Observable.html
-http://java.sun.com/j2se/1.3/docs/api/java/util/Observer.html
+L<http://java.sun.com/j2se/1.4/docs/api/java/util/Observable.html>
+
+L<http://java.sun.com/j2se/1.4/docs/api/java/util/Observer.html>
 
 "Observer and Observable", Todd Sundsted
 
-http://www.javaworld.com/javaworld/jw-10-1996/jw-10-howto_p.html
+L<http://www.javaworld.com/javaworld/jw-10-1996/jw-10-howto_p.html>
 
 "Java Tip 29: How to decouple the Observer/Observable object model", Albert Lopez
 
-http://www.javaworld.com/javatips/jw-javatip29_p.html
+L<http://www.javaworld.com/javatips/jw-javatip29_p.html>
 
 =head1 AUTHOR
 
