@@ -41,7 +41,7 @@ sub update {
 sub num_updates      { return $_[0]->{update} }
 sub num_updates_stop { return $_[0]->{update_stop} }
 
-package DeeJay::PlaySelf;
+package DeeJay::Selfish;
 
 # This DJ only responds to his/her own songs
 
@@ -63,5 +63,18 @@ sub update {
 
 sub num_updates      { return $_[0]->{update} }
 sub num_updates_self { return $_[0]->{update_self} }
+
+package DeeJay::Helper;
+
+use strict;
+
+sub new { return bless( {}, $_[0] ) }
+
+sub update {
+    my ( $self, $song ) = @_;
+    $self->{update}++;
+}
+
+sub num_updates { return $_[0]->{update} }
 
 1;

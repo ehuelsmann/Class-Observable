@@ -1,6 +1,10 @@
 Changes
 Makefile.PL
 MANIFEST
-Observable.pm
 README
-test.pl
+lib/Class/Observable.pm
+t/class_observable.t
+t/inherited.t
+t/DeeJay.pm
+t/Song.pm
+

@@ -1,6 +1,6 @@
 Revision history for Perl extension Class::Observable.
 
-0.01  Mon May 20 23:45:36 2002
-	- original version; created by h2xs 1.21 with options
-		-AX Class::Observable
+0.01  Sun May 26 14:02:30 EDT 2002
 
+      Initial version -- it's got tests! It's got documentation!
+      
