@@ -4,7 +4,7 @@
 
 use strict;
 use lib qw( ./t ./lib );
-use Test::More  tests => 16;
+use Test::More  tests => 19;
 
 BEGIN {
     package Foo;
@@ -27,6 +27,9 @@ sub observer_c { push @observations, "Observation C from [" . ref( $_[0] ) . "]"
 is( Foo->add_observer( \&observer_a ), 1, "Add observer A to class" );
 is( Baz->add_observer( \&observer_b ), 1, "Add observer B to class" );
 
+is( Foo->count_observers, 1, "Count observers in class" );
+is( Baz->count_observers, 2, "Count observers in class" );
+
 my $foo = Foo->new;
 $foo->yodel;
 is( $observations[0], "Observation A from [Foo]", "Catch notification from parent" );
@@ -38,6 +41,7 @@ is( $observations[2], "Observation A from [Baz]", "Catch parent notification fro
 
 my $baz_b = Baz->new;
 is( $baz_b->add_observer( \&observer_c ), 1, "Add observer C to object" );
+is( $baz_b->count_observers, 3, "Count observers in object + class" );
 $baz_b->yell;
 is( $observations[3], "Observation C from [Baz]", "Catch notification (object) from child" );
 is( $observations[4], "Observation B from [Baz]", "Catch notification (class) from child" );
@@ -49,7 +53,7 @@ is( $observations[6], "Observation B from [Baz]", "Catch notification from child
 is( $observations[7], "Observation A from [Baz]", "Catch parent notification from child (after object add)" );
 
 
-is( $baz_b->remove_all_observers, 1, 'Remove object observers' );
-is( $baz_c->remove_all_observers, 0, 'Remove non-existent object observers' );
-is( Baz->remove_all_observers, 1, 'Remove child observers' );
-is( Foo->remove_all_observers, 1, 'Remove parent observers' );
+is( $baz_b->delete_observers, 1, 'Delete object observers' );
+is( $baz_c->delete_observers, 0, 'Delete non-existent object observers' );
+is( Baz->delete_observers, 1, 'Delete child observers' );
+is( Foo->delete_observers, 1, 'Delete parent observers' );

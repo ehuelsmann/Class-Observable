@@ -1,5 +1,15 @@
 Revision history for Perl extension Class::Observable.
 
+0.02  Tue May 28 09:25:12 EDT 2002
+
+      - Modified API to be more like java.util.Observable:
+
+          remove_observer( $o )  -> delete_observer( $o )
+          remove_all_observers() -> delete_observers()
+                                 -> count_observers()
+
+        Updated docs and tests accordingly.
+
 0.01  Sun May 26 14:02:30 EDT 2002
 
       Initial version -- it's got tests! It's got documentation!
