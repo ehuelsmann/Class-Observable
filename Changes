@@ -1,5 +1,15 @@
 Revision history for Perl extension Class::Observable.
 
+0.03  Mon Aug 19 23:02:13 EDT 2002
+
+      - Be able to turn debugging on and off programmatically via
+      C<SET_DEBUG()
+
+      - Allow any number of paramters sent via notify_observers(). (This is
+      Perl, after all...). This is a very small API change and fully
+      backward compatible.
+
+
 0.02  Tue May 28 09:25:12 EDT 2002
 
       - Modified API to be more like java.util.Observable:
@@ -9,6 +19,7 @@ Revision history for Perl extension Class::Observable.
                                  -> count_observers()
 
         Updated docs and tests accordingly.
+
 
 0.01  Sun May 26 14:02:30 EDT 2002
 
