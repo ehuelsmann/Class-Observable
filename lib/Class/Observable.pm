@@ -339,7 +339,7 @@ So given the following example:
  Baz->add_observer( \&observer_b );
 
  my $foo = Foo->new;
- print "Yodeling...\n"
+ print "Yodeling...\n";
  $foo->yodel;
 
  my $baz_a = Baz->new;
@@ -347,6 +347,7 @@ So given the following example:
  $baz_a->yell;
 
  my $baz_b = Baz->new;
+ $baz_b->add_observer( \&observer_c );
  print "Yelling B...\n";
  $baz_b->yell;
 
@@ -354,9 +355,13 @@ You would see something like
 
  Yodeling...
  Observation A from [Foo=HASH(0x80f7acc)]
- Yelling...
- Observation B from [Baz=HASH(0x814f9d8)]
- Observation A from [Baz=HASH(0x814f9d8)]
+ Yelling A...
+ Observation B from [Baz=HASH(0x815c2b4)]
+ Observation A from [Baz=HASH(0x815c2b4)]
+ Yelling B...
+ Observation C from [Baz=HASH(0x815c344)]
+ Observation B from [Baz=HASH(0x815c344)]
+ Observation A from [Baz=HASH(0x815c344)]
 
 And since C<Bar> is a child of C<Foo> and each has one class-level
 observer, running either:
