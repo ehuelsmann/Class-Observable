@@ -1,8 +1,19 @@
 Revision history for Perl extension Class::Observable.
 
+1.04  Sat Oct 16 11:53:03 EDT 2004
+
+      - Ensure that coderef and object observers are added as weak
+      references so we don't have leaks. Add Scalar::Util as
+      dependency.
+
+      - Add 'observer_log()' and 'observer_error()' as overridable
+      logging/error methods.
+
+
 1.03  Wed Jun 16 19:45:18 EDT 2004
 
       Fixed typo in Observable.pm, thanks to Dan Langille.
+
 
 1.02  Tue Nov 11 23:50:33 EST 2003
 
@@ -13,9 +24,11 @@ Revision history for Perl extension Class::Observable.
       observers now. Previously they only took one. 100% compatible
       with old version.
 
+
 1.01  Wed Oct 22 08:30:14 EDT 2003
 
       Fix tiny POD bug (thanks to forehead@4red.org for spotting).
+
 
 1.00  Fri May  2 09:58:57 EDT 2003
 
@@ -23,6 +36,7 @@ Revision history for Perl extension Class::Observable.
       observed item to another.
 
       - We're stable enough to be a version 1.x!
+
 
 0.03  Mon Aug 19 23:02:13 EDT 2002
 
