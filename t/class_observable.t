@@ -10,13 +10,16 @@ require_ok( 'Class::Observable' );
 require_ok( 'Song' );
 require_ok( 'DeeJay' );
 
-my @playlist = ( Song->new( 'U2', 'One' ),
-                 Song->new( 'Moby', 'Ah Ah' ),
-                 Song->new( 'Aimee Mann', 'How Am I Different' ),
-                 Song->new( 'Everclear', 'Wonderful' ) );
-my $dj      = DeeJay->new( \@playlist );
-my $dj_moby = DeeJay::Selfish->new( 'Moby' );
-my $dj_help = DeeJay::Helper->new();
+my ( $last_message );
+my $log = sub { $last_message = $_[0] };
+
+my @playlist = ( Song->new( 'U2', 'One', $log ),
+                 Song->new( 'Moby', 'Ah Ah', $log  ),
+                 Song->new( 'Aimee Mann', 'How Am I Different', $log ),
+                 Song->new( 'Everclear', 'Wonderful', $log  ) );
+my $dj      = DeeJay->new( \@playlist, $log );
+my $dj_moby = DeeJay::Selfish->new( 'Moby', $log );
+my $dj_help = DeeJay::Helper->new( $log );
 is( Song->add_observer( $dj ), 1,
     'Add main class-level observer' );
 is( Song->add_observer( $dj_moby ), 2,

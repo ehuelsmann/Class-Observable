@@ -4,13 +4,9 @@ package Class::Observable;
 
 use strict;
 use Class::ISA;
+use Scalar::Util qw( weaken );
 
-$Class::Observable::VERSION = '1.03';
-
-my ( $DEBUG );
-sub DEBUG     { return $DEBUG; }
-sub SET_DEBUG { $DEBUG = $_[0] }
-
+$Class::Observable::VERSION = '1.04';
 
 my %O = ();
 my %P = ();
@@ -23,9 +19,13 @@ sub add_observer {
     my ( $item, @observers ) = @_;
     $O{ $item } ||= [];
     foreach my $observer ( @observers ) {
-        DEBUG && warn "Adding observer [$observer] to ",
-                      "[", _describe_item( $item ), "]\n";
-        push @{ $O{ $item } }, $observer;
+        $item->observer_log( "Adding observer '$observer' to ",
+                             "'", _describe_item( $item ), "'" );
+        my $num_items = scalar @{ $O{ $item } };
+        $O{ $item }->[ $num_items ] = $observer;
+        if ( ref( $observer ) ) {
+            weaken( $O{ $item }->[ $num_items ] );
+        }
     }
     return scalar @{ $O{ $item } };
 }
@@ -42,11 +42,12 @@ sub delete_observer {
     }
     my %ok_observers = map { $_ => 1 } @{ $O{ $item } };
     foreach my $observer_to_remove ( @observers_to_remove ) {
-        DEBUG && warn "Removing observer [$observer_to_remove] from ",
-                      "[", _describe_item( $item ), "]\n";
+        $item->observer_log( "Removing observer '$observer_to_remove' from ",
+                             "'", _describe_item( $item ), "'" );
         my $removed = delete $ok_observers{ $observer_to_remove };
         if ( $removed ) {
-            DEBUG && warn "Found observer [$observer_to_remove]; removing\n";
+            $item->observer_log( "Found observer '$observer_to_remove'; ",
+                                 "removing..." );
         }
     }
     $O{ $item } = [ keys %ok_observers ];
@@ -59,8 +60,8 @@ sub delete_observer {
 
 sub delete_all_observers {
     my ( $item ) = @_;
-    DEBUG && warn "Removing all observers from ",
-                  "[", _describe_item( $item ), "]\n";
+    $item->observer_log( "Removing all observers from ",
+                         "'", _describe_item( $item ), "'" );
     my $num_removed = 0;
     return $num_removed unless ( ref $O{ $item } eq 'ARRAY' );
     $num_removed = scalar @{ $O{ $item } };
@@ -81,16 +82,23 @@ sub delete_observers {
 
 sub notify_observers {
     my ( $item, $action, @params ) = @_;
-    DEBUG && warn "Notification from [", _describe_item( $item ), "] ",
-                  "with [$action]\n";
+    $action ||= '';
+    $item->observer_log( "Notification from '", _describe_item( $item ), "'",
+                         "with '$action'" );
     my @observers = $item->get_observers;
     foreach my $o ( @observers ) {
-        DEBUG && warn "Notifying observer [$o]\n";
-        if ( ref $o eq 'CODE' ) {
-            $o->( $item, $action, @params );
-        }
-        else {
-            $o->update( $item, $action, @params );
+        $item->observer_log( "Notifying observer '$o'" );
+        eval {
+            if ( ref $o eq 'CODE' ) {
+                $o->( $item, $action, @params );
+            }
+            else {
+                $o->update( $item, $action, @params );
+            }
+        };
+        if ( $@ ) {
+            $item->observer_error(
+                "Failed to send observation from '$item' to '$o': $@" );
         }
     }
 }
@@ -101,23 +109,23 @@ sub notify_observers {
 
 sub get_observers {
     my ( $item ) = @_;
-    DEBUG && warn "Retrieving observers using ",
-                  "[", _describe_item( $item ), "]\n";
+    $item->observer_log( "Retrieving observers using ",
+                         "'", _describe_item( $item ), "'" );
     my @observers = ();
     my $class = ref $item;
     if ( $class ) {
-        DEBUG && warn "Retrieving object-specific observers from ",
-                      "[", _describe_item( $item ), "]\n";
+        $item->observer_log( "Retrieving object-specific observers from ",
+                             "'", _describe_item( $item ), "'" );
         push @observers, $item->_obs_get_observers_scoped;
     }
     else {
         $class = $item;
     }
-    DEBUG && warn "Retrieving class-specific observers from [$class] ",
-                  "and its parents\n";
+    $item->observer_log( "Retrieving class-specific observers from '$class' ",
+                         "and its parents" );
     push @observers, $class->_obs_get_observers_scoped,
                      $class->_obs_get_parent_observers;
-    DEBUG && warn "Found observers [", join( '][', @observers ), "]\n";
+    $item->observer_log( "Found observers '", join( "', '", @observers ), "'" );
     return @observers;
 }
 
@@ -137,7 +145,8 @@ sub copy_observers {
 
 sub count_observers {
     my ( $item ) = @_;
-    DEBUG && warn "Counting observers using [", _describe_item( $item ), "]\n";
+    $item->observer_log( "Counting observers using ",
+                         "'", _describe_item( $item ), "'" );
     my @observers = $item->get_observers;
     return scalar @observers;
 }
@@ -154,8 +163,8 @@ sub _obs_get_parent_observers {
 
     unless ( ref $P{ $class } eq 'ARRAY' ) {
         my @parent_path = Class::ISA::super_path( $class );
-        DEBUG && warn "Finding observers from parent classes ",
-                      '[', join( '] [', @parent_path ), "]\n";
+        $item->observer_log( "Finding observers from parent classes ",
+                             "'", join( "', '", @parent_path ), "'" );
         my @observable_parents = ();
         foreach my $parent ( @parent_path ) {
             next if ( $parent eq 'Class::Observable' );
@@ -164,8 +173,8 @@ sub _obs_get_parent_observers {
             }
         }
         $P{ $class } = \@observable_parents;
-        DEBUG && warn "Found observable parents for [$class]: ",
-                      '[', join( '] [', @observable_parents ), "]\n";
+        $item->observer_log( "Found observable parents for '$class': ",
+                             "'", join( "', '", @observable_parents ), "'" );
     }
 
     my @parent_observers = ();
@@ -197,6 +206,19 @@ sub _describe_item {
     return "Instance of class $item_class";
 }
 
+
+my ( $DEBUG );
+sub DEBUG     { return $DEBUG; }
+sub SET_DEBUG { $DEBUG = $_[0] }
+
+
+sub observer_log {
+    shift; $DEBUG && warn @_, "\n";
+}
+
+sub observer_error {
+    shift; die @_, "\n";
+}
 
 1;
 
@@ -335,7 +357,7 @@ Class::Observable - Allow other classes and objects to respond to events in your
 
 If you have ever used Java, you may have run across the
 C<java.util.Observable> class and the C<java.util.Observer>
-interface. Using them, you can decouple an object from the one or more
+interface. With them you can decouple an object from the one or more
 objects that wish to be notified whenever particular events occur.
 
 These events occur based on a contract with the observed item. They
@@ -517,21 +539,14 @@ B<Object observer>:
 
 =head2 Observable Objects and DESTROY
 
-One problem with this module relates to observing objects. Once the
-object goes out of scope, its observers will still be hanging
-around. For one-off scripts this is not a problem, but for long-lived
-processes this could be a memory leak.
-
-To take care of this, it is a good idea to explicitly release
-observers attached to an object in the C<DESTROY> method. This should
-suffice:
-
-  sub DESTROY {
-      my ( $self ) = @_;
-      $self->delete_all_observers;
-  }
+Previous versions of this module had a problem with maintaining
+references to observable objects/coderefs. As a result they'd never be
+destroyed. As of 1.04 we're using weak references with C<weaken> in
+L<Scalar::Util> so this shouldn't be a problem any longer.
 
 =head1 METHODS
+
+=head2 Observed Item Methods
 
 B<notify_observers( [ $action, @params ] )>
 
@@ -670,15 +685,32 @@ Counts the number of observers for an observed item, including ones
 inherited from its class and/or parent classes. See L<Observable
 Classes and Objects> for more information.
 
+=head2 Debugging Methods
+
+Note that the debugging messages will try to get information about the
+observed item if called from an object. If you have an C<id()> method
+in the object its value will be used in the message, otherwise it will
+be described as "an instance of class Foo".
+
 B<SET_DEBUG( $bool )>
 
-Turn debugging on or off. This will output warn(s) at appropriate
-times during the process.
+Turn debugging on or off. If set the built-in implementation of
+C<observer_log()> will issue a warn at appropriate times during the
+process.
 
-Note that the warnings will try to get information about an object if
-that is what calls C<notify_observers()>. If you have an C<id()>
-method in the object it will be called, otherwise it will be described
-as "an instance of class Foo".
+B<observer_log( @message )>
+
+Issues a C<warn> if C<SET_DEBUG> hsa been called with a true
+value. This gets called multiple times during the registration and
+notification process.
+
+To catch the C<warn> calls just override this method.
+
+B<observer_error( @message )>
+
+Issues a C<die> if we catch an exception when notifying observers. To
+catch the C<die> and do something else with it just override this
+method.
 
 =head1 RESOURCES
 
@@ -696,10 +728,6 @@ L<http://www.javaworld.com/javaworld/jw-10-1996/jw-10-howto_p.html>
 "Java Tip 29: How to decouple the Observer/Observable object model", Albert Lopez,
 L<http://www.javaworld.com/javatips/jw-javatip29_p.html>
 
-=head1 AUTHOR
-
-Chris Winters E<lt>chris@cwinters.comE<gt>
-
 =head1 SEE ALSO
 
 L<Class::ISA|Class::ISA>
@@ -707,3 +735,14 @@ L<Class::ISA|Class::ISA>
 L<Class::Trigger|Class::Trigger>
 
 L<Aspect|Aspect>
+
+=head1 COPYRIGHT
+
+Copyright (c) 2002-2004 Chris Winters. All rights reserved.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=head1 AUTHOR
+
+Chris Winters E<lt>chris@cwinters.comE<gt>
