@@ -333,6 +333,7 @@ So given the following example:
 
  sub observer_a { print "Observation A from [$_[0]]\n" }
  sub observer_b { print "Observation B from [$_[0]]\n" }
+ sub observer_c { print "Observation C from [$_[0]]\n" }
 
  Foo->add_observer( \&observer_a );
  Baz->add_observer( \&observer_b );
@@ -341,9 +342,13 @@ So given the following example:
  print "Yodeling...\n"
  $foo->yodel;
 
- my $baz = Baz->new;
- print "Yelling...\n";
- $baz->yell;
+ my $baz_a = Baz->new;
+ print "Yelling A...\n";
+ $baz_a->yell;
+
+ my $baz_b = Baz->new;
+ print "Yelling B...\n";
+ $baz_b->yell;
 
 You would see something like
 
@@ -352,6 +357,22 @@ You would see something like
  Yelling...
  Observation B from [Baz=HASH(0x814f9d8)]
  Observation A from [Baz=HASH(0x814f9d8)]
+
+And since C<Bar> is a child of C<Foo> and each has one class-level
+observer, running either:
+
+ my @observers = Baz->get_observers();
+ my @observers = $baz_a->get_observers();
+
+would return a two-item list. The first item would be the
+C<observer_b> code reference, the second the C<observer_a> code
+reference. Running:
+
+ my @observers = $baz_b->get_observers();
+
+would return a three-item list, including the observer for that
+specific object (C<observer_c> coderef) as well as from its class
+(Baz) and the parent (Foo) of its class.
 
 =head2 Observers
 
@@ -520,7 +541,21 @@ Example:
 B<get_observers()>
 
 Returns all observers for an observed item, as well as the observers
-for its class and parents as applicable. See L<
+for its class and parents as applicable. See L<Observable Classes and
+Objects> for more information.
+
+Returns: list of observers.
+
+Example:
+
+ my @observers = Person->get_observers;
+ foreach my $o ( @observers ) {
+     print "Observer is a: ";
+     print "Class"      unless ( ref $o );
+     print "Subroutine" if ( ref $o eq 'CODE' );
+     print "Object"     if ( ref $o and ref $o ne 'CODE' );
+     print "\n";
+ }
 
 =head1 RESOURCES
 
