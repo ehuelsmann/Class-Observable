@@ -59,6 +59,11 @@ Class::Observable - Base class for observable classes/objects
   my $object = My::Object->new( 'foo' );
   $object->add_observer( \&catch_observation );
 
+  # Delete a single observer; delete all observers
+
+  My::Object->delete_observer( $observer );
+  My::Object->delete_observers();
+
   # More... see the docs
 
 INSTALLATION
