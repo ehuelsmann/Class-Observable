@@ -1,6 +1,6 @@
 Revision history for Perl extension Class::Observable.
 
-1.02  Tue Nov 11 00:25:34 EST 2003
+1.02  Tue Nov 11 23:50:33 EST 2003
 
       - Rename 'delete_observers' to 'delete_all_observers' (preserving
       old name for compatibility)
