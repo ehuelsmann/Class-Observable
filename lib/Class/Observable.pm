@@ -5,7 +5,7 @@ package Class::Observable;
 use strict;
 use Class::ISA;
 
-$Class::Observable::VERSION = '0.01';
+$Class::Observable::VERSION = '0.02';
 
 use constant DEBUG => 0;
 
@@ -26,7 +26,7 @@ sub add_observer {
 # Remove a single observer from an observable thingy.
 # TODO: Will this work with subroutines?
 
-sub remove_observer {
+sub delete_observer {
     my ( $item, $observer_to_remove ) = @_;
     DEBUG && warn "Removing observer [$observer_to_remove] from [$item]\n";
     return 0 unless ( ref $O{ $item } eq 'ARRAY' );
@@ -47,7 +47,7 @@ sub remove_observer {
 
 # Remove all observers from an observable thingy.
 
-sub remove_all_observers {
+sub delete_observers {
     my ( $item ) = @_;
     DEBUG && warn "Removing all observers from [$item]\n";
     my $num_removed = 0;
@@ -96,6 +96,14 @@ sub get_observers {
     push @observers, $item->_obs_retrieve_parent_observers;
     DEBUG && warn "Found observers [", join( '][', @observers ), "]\n";
     return @observers;
+}
+
+
+sub count_observers {
+    my ( $item ) = @_;
+    DEBUG && warn "Counting observers using [$item]\n";
+    my @observers = $item->get_observers;
+    return scalar @observers;
 }
 
 
@@ -260,9 +268,9 @@ Class::Observable - Allow other classes and objects to respond to events in your
 =head1 DESCRIPTION
 
 If you have ever used Java, you may have run across the
-C<java.util.Observable> interface. Using it, you can decouple an
-object from the one or more objects that wish to be notified whenever
-particular events occur.
+C<java.util.Observable> class and the C<java.util.Observer>
+interface. Using them, you can decouple an object from the one or more
+objects that wish to be notified whenever particular events occur.
 
 These events occur based on a contract with the observed item. They
 may occur at the beginning, in the middle or end of a method. In
@@ -449,7 +457,7 @@ suffice:
 
   sub DESTROY {
       my ( $self ) = @_;
-      $self->remove_all_observers;
+      $self->delete_observers;
   }
 
 =head1 METHODS
@@ -497,13 +505,13 @@ Example:
  my $salary_policy = Company::Policy::Salary->new( 'pretax' );
  Person->add_observer( $salary_policy );
 
-B<remove_observer( $observer )>
+B<delete_observer( $observer )>
 
 Removes the observer C<$observer> from the observed item. The observer
 can be a class name, object or subroutine -- see L<Types of
 Observers>.
 
-Note that this only removes C<$observer> from the observed item
+Note that this only deletes C<$observer> from the observed item
 itself. It does not remove C<$observer> from any parent
 classes. Therefore, if C<$observer> is not registered directly with
 the observed item nothing will be removed.
@@ -513,16 +521,16 @@ Returns: The number of observers now observing the item.
 Examples:
 
  # Remove a class observer from an object
- $person->remove_observer( 'Lech::Ogler' );
+ $person->delete_observer( 'Lech::Ogler' );
 
  # Remove an object observer from a class
- Person->remove_observer( $salary_policy );
+ Person->delete_observer( $salary_policy );
 
-B<remove_all_observers()>
+B<delete_observers()>
 
 Removes all observers from the observed item.
 
-Note that this only clears observers registered directly with the
+Note that this only deletes observers registered directly with the
 observed item. It does not clear out observers from any parent
 classes.
 
@@ -530,7 +538,7 @@ Returns: The number of observers removed.
 
 Example:
 
- Person->remove_all_observers();
+ Person->delete_observers();
 
 B<get_observers()>
 
@@ -551,7 +559,19 @@ Example:
      print "\n";
  }
 
+B<count_observers()>
+
+Counts the number of observers for an observed item, including ones
+inherited from its class and/or parent classes. See L<Observable
+Classes and Objects> for more information.
+
 =head1 RESOURCES
+
+APIs for java.util.Observable and java.util.Observer. (Docs below are
+included with JDK 1.3, but the interfaces have not changed.)
+
+http://java.sun.com/j2se/1.3/docs/api/java/util/Observable.html
+http://java.sun.com/j2se/1.3/docs/api/java/util/Observer.html
 
 "Observer and Observable", Todd Sundsted
 
@@ -572,5 +592,3 @@ L<Class::ISA|Class::ISA>
 L<Class::Trigger|Class::Trigger>
 
 L<Aspect|Aspect>
-
-=cut
