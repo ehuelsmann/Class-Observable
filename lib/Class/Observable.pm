@@ -7,7 +7,6 @@ use Class::ISA;
 use Scalar::Util 'weaken';
 
 my %O = ();
-my %P = ();
 
 # Add one or more observers (class name, object or subroutine) to an
 # observable thingy (class or object). Return new number of observers.
@@ -121,30 +120,34 @@ sub count_observers {
 
 # Find observers from parents
 
-sub _obs_get_parent_observers {
-    my ( $item ) = @_;
-    my $class = ref $item || $item;
+{
+	my %P = ();
 
-    # We only find the parents the first time, so if you muck with
-    # @ISA you'll get unexpected behavior...
+	sub _obs_get_parent_observers {
+		my ( $item ) = @_;
+		my $class = ref $item || $item;
 
-    unless ( ref $P{ $class } eq 'ARRAY' ) {
-        my @parent_path = Class::ISA::super_path( $class );
-        my @observable_parents = ();
-        foreach my $parent ( @parent_path ) {
-            next if ( $parent eq 'Class::Observable' );
-            if ( $parent->isa( 'Class::Observable' ) ) {
-                push @observable_parents, $parent;
-            }
-        }
-        $P{ $class } = \@observable_parents;
-    }
+		# We only find the parents the first time, so if you muck with
+		# @ISA you'll get unexpected behavior...
 
-    my @parent_observers = ();
-    foreach my $parent ( @{ $P{ $class } } ) {
-        push @parent_observers, $parent->_obs_get_observers_scoped;
-    }
-    return @parent_observers;
+		unless ( ref $P{ $class } eq 'ARRAY' ) {
+			my @parent_path = Class::ISA::super_path( $class );
+			my @observable_parents = ();
+			foreach my $parent ( @parent_path ) {
+				next if ( $parent eq 'Class::Observable' );
+				if ( $parent->isa( 'Class::Observable' ) ) {
+					push @observable_parents, $parent;
+				}
+			}
+			$P{ $class } = \@observable_parents;
+		}
+
+		my @parent_observers = ();
+		foreach my $parent ( @{ $P{ $class } } ) {
+			push @parent_observers, $parent->_obs_get_observers_scoped;
+		}
+		return @parent_observers;
+	}
 }
 
 
