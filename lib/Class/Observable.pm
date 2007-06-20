@@ -12,16 +12,10 @@ my %O = ();
 # observable thingy (class or object). Return new number of observers.
 
 sub add_observer {
-	my ( $item, @observers ) = @_;
-	$O{ $item } ||= [];
-	foreach my $observer ( @observers ) {
-		my $num_items = scalar @{ $O{ $item } };
-		$O{ $item }->[ $num_items ] = $observer;
-		if ( ref( $observer ) ) {
-			weaken( $O{ $item }->[ $num_items ] );
-		}
-	}
-	return scalar @{ $O{ $item } };
+	my $self = shift;
+	$O{ $self } ||= [];
+	push @{ $O{ $self } }, @_;
+	return;
 }
 
 
@@ -30,15 +24,15 @@ sub add_observer {
 # TODO: Will this work with subroutines?
 
 sub delete_observer {
-	my ( $item, @observers_to_remove ) = @_;
-	unless ( ref $O{ $item } eq 'ARRAY' ) {
+	my $self = shift;
+	unless ( ref $O{ $self } eq 'ARRAY' ) {
 		return 0;
 	}
-	my %ok_observers = map { $_ => 1 } @{ $O{ $item } };
-	foreach my $observer_to_remove ( @observers_to_remove ) {
+	my %ok_observers = map { $_ => 1 } @{ $O{ $self } };
+	foreach my $observer_to_remove ( @_ ) {
 		my $removed = delete $ok_observers{ $observer_to_remove };
 	}
-	$O{ $item } = [ keys %ok_observers ];
+	$O{ $self } = [ keys %ok_observers ];
 	return scalar keys %ok_observers;
 }
 
@@ -47,11 +41,11 @@ sub delete_observer {
 # observers removed.
 
 sub delete_all_observers {
-	my ( $item ) = @_;
+	my $self = shift;
 	my $num_removed = 0;
-	return $num_removed unless ( ref $O{ $item } eq 'ARRAY' );
-	$num_removed = scalar @{ $O{ $item } };
-	$O{ $item } = [];
+	return $num_removed unless ( ref $O{ $self } eq 'ARRAY' );
+	$num_removed = scalar @{ $O{ $self } };
+	$O{ $self } = [];
 	return $num_removed;
 }
 
@@ -65,15 +59,16 @@ sub delete_all_observers {
 # value.
 
 sub notify_observers {
-	my ( $item, $action, @params ) = @_;
+	my $self = shift;
+	my ( $action, @params ) = @_;
 	$action ||= '';
-	my @observers = $item->get_observers;
+	my @observers = $self->get_observers;
 	foreach my $o ( @observers ) {
 		if ( ref $o eq 'CODE' ) {
-			$o->( $item, $action, @params );
+			$o->( $self, $action, @params );
 		}
 		else {
-			$o->update( $item, $action, @params );
+			$o->update( $self, $action, @params );
 		}
 	}
 }
@@ -83,14 +78,14 @@ sub notify_observers {
 # *all* means.) Returns a list of observers
 
 sub get_observers {
-	my ( $item ) = @_;
+	my $self = shift;
 	my @observers = ();
-	my $class = ref $item;
+	my $class = ref $self;
 	if ( $class ) {
-		push @observers, $item->_obs_get_observers_scoped;
+		push @observers, $self->_obs_get_observers_scoped;
 	}
 	else {
-		$class = $item;
+		$class = $self;
 	}
 	push @observers, $class->_obs_get_observers_scoped,
 	$class->_obs_get_parent_observers;
@@ -102,12 +97,10 @@ sub get_observers {
 # observers from parents.
 
 sub copy_observers {
-	my ( $item_from, $item_to ) = @_;
-	my @from_observers = $item_from->get_observers;
-	foreach my $observer ( @from_observers ) {
-		$item_to->add_observer( $observer );
-	}
-	return scalar @from_observers;
+	my $self = shift;
+	my ( $target ) = @_;
+	$target->add_observer( $self->get_observers );
+	return;
 }
 
 
@@ -120,7 +113,7 @@ sub copy_observers {
 
 	sub _obs_get_parent_observers {
 		my $self = shift;
-		my $class = ref $item or $item;
+		my $class = ref( $self ) || $self;
 
 		$P{ $class } ||= [ grep { $_->isa( 'Class::Observable' ) } Class::ISA::super_path( $class ) ];
 
@@ -131,9 +124,9 @@ sub copy_observers {
 # Return observers ONLY for the specified item
 
 sub _obs_get_observers_scoped {
-	my ( $item ) = @_;
-	return () unless ( ref $O{ $item } eq 'ARRAY' );
-	return @{ $O{ $item } };
+	my $self = shift;
+	return () unless ( ref $O{ $self } eq 'ARRAY' );
+	return @{ $O{ $self } };
 }
 
 1;
@@ -152,25 +145,25 @@ __END__
   # has occurred
  
   sub create {
-     my ( $self ) = @_;
-     eval { $self->_perform_create() };
-     if ( $@ ) {
-         My::Exception->throw( "Error saving: $@" );
-     }
-     $self->notify_observers();
+      my $self = shift;
+      eval { $self->_perform_create() };
+      if ( $@ ) {
+          My::Exception->throw( "Error saving: $@" );
+      }
+      $self->notify_observers();
   }
  
   # Same thing, except make the type of change explicit and pass
   # arguments.
  
   sub edit {
-     my ( $self ) = @_;
-     my %old_values = $self->extract_values;
-     eval { $self->_perform_edit() };
-     if ( $@ ) {
-         My::Exception->throw( "Error saving: $@" );
-     }
-     $self->notify_observers( 'edit', old_values => \%old_values );
+      my $self = shift;
+      my %old_values = $self->extract_values;
+      eval { $self->_perform_edit() };
+      if ( $@ ) {
+          My::Exception->throw( "Error saving: $@" );
+      }
+      $self->notify_observers( 'edit', old_values => \%old_values );
   }
  
   # Define an observer
@@ -178,13 +171,14 @@ __END__
   package My::Observer;
  
   sub update {
-     my ( $class, $object, $action ) = @_;
-     unless ( $action ) {
-         warn "Cannot operation on [", $object->id, "] without action";
-         return;
-     }
-     $class->_on_save( $object )   if ( $action eq 'save' );
-     $class->_on_update( $object ) if ( $action eq 'update' );
+      my $class = shift;
+      my ( $object, $action ) = @_;
+      unless ( $action ) {
+          warn "Cannot operation on [", $object->id, "] without action";
+          return;
+      }
+      $class->_on_save( $object )   if ( $action eq 'save' );
+      $class->_on_update( $object ) if ( $action eq 'update' );
   }
  
   # Register the observer class with all instances of the observable
@@ -222,12 +216,12 @@ __END__
   use base qw( Class::Observable );
  
   sub prepare_for_bed {
-      my ( $self ) = @_;
+      my $self = shift;
       $self->notify_observers( 'prepare_for_bed' );
   }
  
   sub brush_teeth {
-      my ( $self ) = @_;
+      my $self = shift;
       $self->_brush_teeth( time => 45 );
       $self->_floss_teeth( time => 30 );
       $self->_gargle( time => 30 );
@@ -242,7 +236,7 @@ __END__
   use base qw( My::Parent );
  
   sub brush_teeth {
-      my ( $self ) = @_;
+      my $self = shift;
       $self->_wet_toothbrush();
   }
  
@@ -253,10 +247,11 @@ __END__
   package My::ParentRules;
  
   sub update {
-      my ( $item, $action ) = @_;
+      my $self = shift;
+      my ( $action ) = @_;
       if ( $action eq 'prepare_for_bed' ) {
-          $item->brush_teeth;
-          $item->wash_face;
+          $self->brush_teeth;
+          $self->wash_face;
       }
   }
  
@@ -449,13 +444,6 @@ B<Object observer>:
      # ...
  }
 
-=head2 Observable Objects and DESTROY
-
-Previous versions of this module had a problem with maintaining
-references to observable objects/coderefs. As a result they'd never be
-destroyed. As of 1.04 we're using weak references with C<weaken> in
-L<Scalar::Util> so this shouldn't be a problem any longer.
-
 =head1 METHODS
 
 =head2 Observed Item Methods
@@ -590,6 +578,12 @@ Example:
  # $address
  
  $person->copy_observers( $address )
+
+B<count_observers()>
+
+Counts the number of observers for an observed item, including ones
+inherited from its class and/or parent classes. See L<Observable
+Classes and Objects> for more information.
 
 =head1 RESOURCES
 
