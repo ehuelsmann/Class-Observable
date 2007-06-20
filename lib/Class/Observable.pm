@@ -12,16 +12,16 @@ my %O = ();
 # observable thingy (class or object). Return new number of observers.
 
 sub add_observer {
-    my ( $item, @observers ) = @_;
-    $O{ $item } ||= [];
-    foreach my $observer ( @observers ) {
-        my $num_items = scalar @{ $O{ $item } };
-        $O{ $item }->[ $num_items ] = $observer;
-        if ( ref( $observer ) ) {
-            weaken( $O{ $item }->[ $num_items ] );
-        }
-    }
-    return scalar @{ $O{ $item } };
+	my ( $item, @observers ) = @_;
+	$O{ $item } ||= [];
+	foreach my $observer ( @observers ) {
+		my $num_items = scalar @{ $O{ $item } };
+		$O{ $item }->[ $num_items ] = $observer;
+		if ( ref( $observer ) ) {
+			weaken( $O{ $item }->[ $num_items ] );
+		}
+	}
+	return scalar @{ $O{ $item } };
 }
 
 
@@ -30,16 +30,16 @@ sub add_observer {
 # TODO: Will this work with subroutines?
 
 sub delete_observer {
-    my ( $item, @observers_to_remove ) = @_;
-    unless ( ref $O{ $item } eq 'ARRAY' ) {
-        return 0;
-    }
-    my %ok_observers = map { $_ => 1 } @{ $O{ $item } };
-    foreach my $observer_to_remove ( @observers_to_remove ) {
-        my $removed = delete $ok_observers{ $observer_to_remove };
-    }
-    $O{ $item } = [ keys %ok_observers ];
-    return scalar keys %ok_observers;
+	my ( $item, @observers_to_remove ) = @_;
+	unless ( ref $O{ $item } eq 'ARRAY' ) {
+		return 0;
+	}
+	my %ok_observers = map { $_ => 1 } @{ $O{ $item } };
+	foreach my $observer_to_remove ( @observers_to_remove ) {
+		my $removed = delete $ok_observers{ $observer_to_remove };
+	}
+	$O{ $item } = [ keys %ok_observers ];
+	return scalar keys %ok_observers;
 }
 
 
@@ -47,12 +47,12 @@ sub delete_observer {
 # observers removed.
 
 sub delete_all_observers {
-    my ( $item ) = @_;
-    my $num_removed = 0;
-    return $num_removed unless ( ref $O{ $item } eq 'ARRAY' );
-    $num_removed = scalar @{ $O{ $item } };
-    $O{ $item } = [];
-    return $num_removed;
+	my ( $item ) = @_;
+	my $num_removed = 0;
+	return $num_removed unless ( ref $O{ $item } eq 'ARRAY' );
+	$num_removed = scalar @{ $O{ $item } };
+	$O{ $item } = [];
+	return $num_removed;
 }
 
 
@@ -65,17 +65,17 @@ sub delete_all_observers {
 # value.
 
 sub notify_observers {
-    my ( $item, $action, @params ) = @_;
-    $action ||= '';
-    my @observers = $item->get_observers;
-    foreach my $o ( @observers ) {
+	my ( $item, $action, @params ) = @_;
+	$action ||= '';
+	my @observers = $item->get_observers;
+	foreach my $o ( @observers ) {
 		if ( ref $o eq 'CODE' ) {
 			$o->( $item, $action, @params );
 		}
 		else {
 			$o->update( $item, $action, @params );
 		}
-    }
+	}
 }
 
 
@@ -83,18 +83,18 @@ sub notify_observers {
 # *all* means.) Returns a list of observers
 
 sub get_observers {
-    my ( $item ) = @_;
-    my @observers = ();
-    my $class = ref $item;
-    if ( $class ) {
-        push @observers, $item->_obs_get_observers_scoped;
-    }
-    else {
-        $class = $item;
-    }
-    push @observers, $class->_obs_get_observers_scoped,
-                     $class->_obs_get_parent_observers;
-    return @observers;
+	my ( $item ) = @_;
+	my @observers = ();
+	my $class = ref $item;
+	if ( $class ) {
+		push @observers, $item->_obs_get_observers_scoped;
+	}
+	else {
+		$class = $item;
+	}
+	push @observers, $class->_obs_get_observers_scoped,
+	$class->_obs_get_parent_observers;
+	return @observers;
 }
 
 
@@ -102,19 +102,19 @@ sub get_observers {
 # observers from parents.
 
 sub copy_observers {
-    my ( $item_from, $item_to ) = @_;
-    my @from_observers = $item_from->get_observers;
-    foreach my $observer ( @from_observers ) {
-        $item_to->add_observer( $observer );
-    }
-    return scalar @from_observers;
+	my ( $item_from, $item_to ) = @_;
+	my @from_observers = $item_from->get_observers;
+	foreach my $observer ( @from_observers ) {
+		$item_to->add_observer( $observer );
+	}
+	return scalar @from_observers;
 }
 
 
 sub count_observers {
-    my ( $item ) = @_;
-    my @observers = $item->get_observers;
-    return scalar @observers;
+	my ( $item ) = @_;
+	my @observers = $item->get_observers;
+	return scalar @observers;
 }
 
 
@@ -138,9 +138,9 @@ sub count_observers {
 # Return observers ONLY for the specified item
 
 sub _obs_get_observers_scoped {
-    my ( $item ) = @_;
-    return () unless ( ref $O{ $item } eq 'ARRAY' );
-    return @{ $O{ $item } };
+	my ( $item ) = @_;
+	return () unless ( ref $O{ $item } eq 'ARRAY' );
+	return @{ $O{ $item } };
 }
 
 1;
