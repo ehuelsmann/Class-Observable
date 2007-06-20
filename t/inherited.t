@@ -25,8 +25,8 @@ sub observer_c { push @observations, "Observation C from [" . ref( $_[0] ) . "]"
 is( Foo->add_observer( \&observer_a ), 1, "Add observer A to class" );
 is( Baz->add_observer( \&observer_b ), 1, "Add observer B to class" );
 
-is( Foo->count_observers, 1, "Count observers in class" );
-is( Baz->count_observers, 2, "Count observers in class" );
+is( scalar Foo->get_observers, 1, "Count observers in class" );
+is( scalar Baz->get_observers, 2, "Count observers in class" );
 
 my $foo = Foo->new;
 $foo->yodel;
@@ -39,7 +39,7 @@ is( $observations[2], "Observation A from [Baz]", "Catch parent notification fro
 
 my $baz_b = Baz->new;
 is( $baz_b->add_observer( \&observer_c ), 1, "Add observer C to object" );
-is( $baz_b->count_observers, 3, "Count observers in object + class" );
+is( scalar $baz_b->get_observers, 3, "Count observers in object + class" );
 $baz_b->yell;
 is( $observations[3], "Observation C from [Baz]", "Catch notification (object) from child" );
 is( $observations[4], "Observation B from [Baz]", "Catch notification (class) from child" );

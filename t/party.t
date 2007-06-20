@@ -25,9 +25,9 @@ is( Song->add_observer( $dj_moby ), 2,
 is( $playlist[0]->add_observer( $dj_help ), 1,
     'Add object-level observer' );
 
-is( Song->count_observers, 2,
+is( scalar Song->get_observers, 2,
     'Count class-level observers' );
-is( $playlist[0]->count_observers, 3,
+is( scalar $playlist[0]->get_observers, 3,
     'Count object-level + class-level observers' );
 
 $dj->start_party;
@@ -43,13 +43,14 @@ is( $dj_moby->num_updates_self, 2,
 is( $dj_help->num_updates, 2,
     'Count observations from object-level observer' );
 
-my $num_observers_copied = eval {
+my $num_prev_observers = $playlist[1]->get_observers;
+eval {
     $playlist[0]->copy_observers( $playlist[1] )
 };
 ok( ! $@, 'Copied observers run' );
-is( $num_observers_copied, 3,
+is( $playlist[1]->get_observers - $num_prev_observers, 3,
     'Copied correct number of observers' );
-is( $playlist[1]->count_observers, 5,
+is( scalar $playlist[1]->get_observers, 5,
     'New object has correct number of observers' );
 
 is( $playlist[0]->delete_all_observers, 1,

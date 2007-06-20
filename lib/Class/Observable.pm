@@ -111,13 +111,6 @@ sub copy_observers {
 }
 
 
-sub count_observers {
-	my ( $item ) = @_;
-	my @observers = $item->get_observers;
-	return scalar @observers;
-}
-
-
 # Find observers from parents
 # NB.: we cache the parents the first time, so if you muck with
 # @ISA you'll get unexpected behavior...
@@ -597,12 +590,6 @@ Example:
  # $address
  
  $person->copy_observers( $address )
-
-B<count_observers()>
-
-Counts the number of observers for an observed item, including ones
-inherited from its class and/or parent classes. See L<Observable
-Classes and Objects> for more information.
 
 =head1 RESOURCES
 
