@@ -119,37 +119,21 @@ sub count_observers {
 
 
 # Find observers from parents
+# NB.: we cache the parents the first time, so if you muck with
+# @ISA you'll get unexpected behavior...
 
 {
 	my %P = ();
 
 	sub _obs_get_parent_observers {
-		my ( $item ) = @_;
-		my $class = ref $item || $item;
+		my $self = shift;
+		my $class = ref $item or $item;
 
-		# We only find the parents the first time, so if you muck with
-		# @ISA you'll get unexpected behavior...
+		$P{ $class } ||= [ grep { $_->isa( 'Class::Observable' ) } Class::ISA::super_path( $class ) ];
 
-		unless ( ref $P{ $class } eq 'ARRAY' ) {
-			my @parent_path = Class::ISA::super_path( $class );
-			my @observable_parents = ();
-			foreach my $parent ( @parent_path ) {
-				next if ( $parent eq 'Class::Observable' );
-				if ( $parent->isa( 'Class::Observable' ) ) {
-					push @observable_parents, $parent;
-				}
-			}
-			$P{ $class } = \@observable_parents;
-		}
-
-		my @parent_observers = ();
-		foreach my $parent ( @{ $P{ $class } } ) {
-			push @parent_observers, $parent->_obs_get_observers_scoped;
-		}
-		return @parent_observers;
+		return map { $_->_obs_get_observers_scoped } @{ $P{ $class } };
 	}
 }
-
 
 # Return observers ONLY for the specified item
 
