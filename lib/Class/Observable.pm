@@ -9,7 +9,6 @@ use Scalar::Util 'weaken';
 my %O = ();
 my %P = ();
 
-
 # Add one or more observers (class name, object or subroutine) to an
 # observable thingy (class or object). Return new number of observers.
 
@@ -17,8 +16,6 @@ sub add_observer {
     my ( $item, @observers ) = @_;
     $O{ $item } ||= [];
     foreach my $observer ( @observers ) {
-        $item->observer_log( "Adding observer '$observer' to ",
-                             "'", _describe_item( $item ), "'" );
         my $num_items = scalar @{ $O{ $item } };
         $O{ $item }->[ $num_items ] = $observer;
         if ( ref( $observer ) ) {
@@ -40,13 +37,7 @@ sub delete_observer {
     }
     my %ok_observers = map { $_ => 1 } @{ $O{ $item } };
     foreach my $observer_to_remove ( @observers_to_remove ) {
-        $item->observer_log( "Removing observer '$observer_to_remove' from ",
-                             "'", _describe_item( $item ), "'" );
         my $removed = delete $ok_observers{ $observer_to_remove };
-        if ( $removed ) {
-            $item->observer_log( "Found observer '$observer_to_remove'; ",
-                                 "removing..." );
-        }
     }
     $O{ $item } = [ keys %ok_observers ];
     return scalar keys %ok_observers;
@@ -58,8 +49,6 @@ sub delete_observer {
 
 sub delete_all_observers {
     my ( $item ) = @_;
-    $item->observer_log( "Removing all observers from ",
-                         "'", _describe_item( $item ), "'" );
     my $num_removed = 0;
     return $num_removed unless ( ref $O{ $item } eq 'ARRAY' );
     $num_removed = scalar @{ $O{ $item } };
@@ -70,9 +59,7 @@ sub delete_all_observers {
 
 # Backward compatibility
 
-sub delete_observers {
-    goto \&delete_all_observers;
-}
+*delete_observers = \&delete_all_observers;
 
 
 # Tell all observers that a state-change has occurred. No return
@@ -81,23 +68,14 @@ sub delete_observers {
 sub notify_observers {
     my ( $item, $action, @params ) = @_;
     $action ||= '';
-    $item->observer_log( "Notification from '", _describe_item( $item ), "'",
-                         "with '$action'" );
     my @observers = $item->get_observers;
     foreach my $o ( @observers ) {
-        $item->observer_log( "Notifying observer '$o'" );
-        eval {
-            if ( ref $o eq 'CODE' ) {
-                $o->( $item, $action, @params );
-            }
-            else {
-                $o->update( $item, $action, @params );
-            }
-        };
-        if ( $@ ) {
-            $item->observer_error(
-                "Failed to send observation from '$item' to '$o': $@" );
-        }
+		if ( ref $o eq 'CODE' ) {
+			$o->( $item, $action, @params );
+		}
+		else {
+			$o->update( $item, $action, @params );
+		}
     }
 }
 
@@ -107,23 +85,16 @@ sub notify_observers {
 
 sub get_observers {
     my ( $item ) = @_;
-    $item->observer_log( "Retrieving observers using ",
-                         "'", _describe_item( $item ), "'" );
     my @observers = ();
     my $class = ref $item;
     if ( $class ) {
-        $item->observer_log( "Retrieving object-specific observers from ",
-                             "'", _describe_item( $item ), "'" );
         push @observers, $item->_obs_get_observers_scoped;
     }
     else {
         $class = $item;
     }
-    $item->observer_log( "Retrieving class-specific observers from '$class' ",
-                         "and its parents" );
     push @observers, $class->_obs_get_observers_scoped,
                      $class->_obs_get_parent_observers;
-    $item->observer_log( "Found observers '", join( "', '", @observers ), "'" );
     return @observers;
 }
 
@@ -143,8 +114,6 @@ sub copy_observers {
 
 sub count_observers {
     my ( $item ) = @_;
-    $item->observer_log( "Counting observers using ",
-                         "'", _describe_item( $item ), "'" );
     my @observers = $item->get_observers;
     return scalar @observers;
 }
@@ -161,8 +130,6 @@ sub _obs_get_parent_observers {
 
     unless ( ref $P{ $class } eq 'ARRAY' ) {
         my @parent_path = Class::ISA::super_path( $class );
-        $item->observer_log( "Finding observers from parent classes ",
-                             "'", join( "', '", @parent_path ), "'" );
         my @observable_parents = ();
         foreach my $parent ( @parent_path ) {
             next if ( $parent eq 'Class::Observable' );
@@ -171,8 +138,6 @@ sub _obs_get_parent_observers {
             }
         }
         $P{ $class } = \@observable_parents;
-        $item->observer_log( "Found observable parents for '$class': ",
-                             "'", join( "', '", @observable_parents ), "'" );
     }
 
     my @parent_observers = ();
@@ -189,33 +154,6 @@ sub _obs_get_observers_scoped {
     my ( $item ) = @_;
     return () unless ( ref $O{ $item } eq 'ARRAY' );
     return @{ $O{ $item } };
-}
-
-
-# Used in debugging
-
-sub _describe_item {
-    my ( $item ) = @_;
-    return "Class $item" unless ( ref $item );
-    my $item_class = ref $item;
-    if ( $item->can( 'id' ) ) {
-        return "Object of class $item_class with ID ", $item->id();
-    }
-    return "Instance of class $item_class";
-}
-
-
-my ( $DEBUG );
-sub DEBUG     { return $DEBUG; }
-sub SET_DEBUG { $DEBUG = $_[0] }
-
-
-sub observer_log {
-    shift; $DEBUG && warn @_, "\n";
-}
-
-sub observer_error {
-    shift; die @_, "\n";
 }
 
 1;
@@ -678,33 +616,6 @@ B<count_observers()>
 Counts the number of observers for an observed item, including ones
 inherited from its class and/or parent classes. See L<Observable
 Classes and Objects> for more information.
-
-=head2 Debugging Methods
-
-Note that the debugging messages will try to get information about the
-observed item if called from an object. If you have an C<id()> method
-in the object its value will be used in the message, otherwise it will
-be described as "an instance of class Foo".
-
-B<SET_DEBUG( $bool )>
-
-Turn debugging on or off. If set the built-in implementation of
-C<observer_log()> will issue a warn at appropriate times during the
-process.
-
-B<observer_log( @message )>
-
-Issues a C<warn> if C<SET_DEBUG> hsa been called with a true
-value. This gets called multiple times during the registration and
-notification process.
-
-To catch the C<warn> calls just override this method.
-
-B<observer_error( @message )>
-
-Issues a C<die> if we catch an exception when notifying observers. To
-catch the C<die> and do something else with it just override this
-method.
 
 =head1 RESOURCES
 
