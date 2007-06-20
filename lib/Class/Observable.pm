@@ -15,7 +15,7 @@ sub add_observer {
 	my $self = shift;
 	$O{ $self } ||= [];
 	push @{ $O{ $self } }, @_;
-	return;
+	return scalar @{ $O{ $self } };
 }
 
 
