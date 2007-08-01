@@ -68,7 +68,7 @@ sub notify_observers {
 			$o->( $self, $action, @params );
 		}
 		else {
-			$o->update( $self, $action, @params );
+			$o->receive_notification( $self, $action, @params );
 		}
 	}
 }
@@ -170,7 +170,7 @@ __END__
  
   package My::Observer;
  
-  sub update {
+  sub receive_notification {
       my $class = shift;
       my ( $object, $action ) = @_;
       unless ( $action ) {
@@ -246,7 +246,7 @@ __END__
  
   package My::ParentRules;
  
-  sub update {
+  sub receive_notification {
       my $self = shift;
       my ( $action ) = @_;
       if ( $action eq 'prepare_for_bed' ) {
@@ -387,7 +387,7 @@ are:
 
 =item *
 
-A class or object observer must implement a method C<update()> which
+A class or object observer must implement a method C<receive_notification()> which
 is called when a state-change occurs. The name of the subroutine
 observer is irrelevant.
 
@@ -423,7 +423,7 @@ B<Class observer>:
 
  package My::ObserverC;
  
- sub update {
+ sub receive_notification {
      my ( $class, $item, $action, $params ) = @_;
      return unless ( $action eq 'update' );
      # ...
@@ -438,7 +438,7 @@ B<Object observer>:
      return bless ( { type => $type }, $class );
  }
  
- sub update {
+ sub receive_notification {
      my ( $self, $item, $action, $params ) = @_;
      return unless ( $action eq $self->{type} );
      # ...

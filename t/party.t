@@ -32,15 +32,15 @@ is( scalar $playlist[0]->get_observers, 3,
 
 $dj->start_party;
 
-is( $dj->num_updates, 8,
+is( $dj->num_notifications, 8,
     'Total observations from starter' );
-is( $dj->num_updates_stop, 4,
+is( $dj->num_notifications_stop, 4,
     'Catch observations from starter' );
-is( $dj_moby->num_updates, 8,
+is( $dj_moby->num_notifications, 8,
     'Count observations from secondary' );
-is( $dj_moby->num_updates_self, 2,
+is( $dj_moby->num_notifications_self, 2,
     'Catch observations from secondary' );
-is( $dj_help->num_updates, 2,
+is( $dj_help->num_notifications, 2,
     'Count observations from object-level observer' );
 
 my $num_prev_observers = $playlist[1]->get_observers;
@@ -48,9 +48,9 @@ eval {
     $playlist[0]->copy_observers( $playlist[1] )
 };
 ok( ! $@, 'Copied observers run' );
-is( $playlist[1]->get_observers - $num_prev_observers, 3,
+is( $playlist[1]->get_observers - $num_prev_observers, 1,
     'Copied correct number of observers' );
-is( scalar $playlist[1]->get_observers, 5,
+is( scalar $playlist[1]->get_observers, 3,
     'New object has correct number of observers' );
 
 is( $playlist[0]->delete_all_observers, 1,

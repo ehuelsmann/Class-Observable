@@ -8,12 +8,17 @@ use base qw( Class::Observable );
 
 sub new {
     my ( $class, $band, $name, $log ) = @_;
-    return bless( {
-        band => $band,
-        name => $name,
-        log  => $log,
-    }, $class );
+    my $self = bless {}, $class;
+    %$self = (
+        band      => $band,
+        name      => $name,
+        log       => $log,
+        watchlist => $self->create_watchlist,
+    );
+    return $self;
 }
+
+sub FETCH_WATCHLIST { shift->{ watchlist } }
 
 sub play {
     my ( $self ) = @_;

@@ -28,13 +28,13 @@ sub end_party {
         $self->{log}->( "Party's over, time to go home" );
 }
 
-sub update {
+sub receive_notification {
     my ( $self, $song, $action ) = @_;
     $self->{log} &&
-        $self->{log}->( "Caught update [$action] from [$song->{band}]" );
-    $self->{update}++;
+        $self->{log}->( "Caught notification [$action] from [$song->{band}]" );
+    $self->{notification}++;
     return unless ( $action eq 'stop_play' );
-    $self->{update_stop}++;
+    $self->{notification_stop}++;
     $self->{current_song}++;
     if ( $self->{current_song} == $self->{num_songs} ) {
         return $self->end_party;
@@ -42,8 +42,8 @@ sub update {
     $self->{playlist}[ $self->{current_song} ]->play;
 }
 
-sub num_updates      { return $_[0]->{update} }
-sub num_updates_stop { return $_[0]->{update_stop} }
+sub num_notifications      { return $_[0]->{notification} }
+sub num_notifications_stop { return $_[0]->{notification_stop} }
 
 sub DESTROY {
     my ( $self ) = @_;
@@ -60,22 +60,22 @@ sub new {
     my ( $class, $my_name, $log ) = @_;
     return bless({
         name        => $my_name,
-        update      => 0,
-        update_self => 0,
+        notification      => 0,
+        notification_self => 0,
         log         => $log,
     }, $class );
 }
 
-sub update {
+sub receive_notification {
     my ( $self, $song ) = @_;
-    $self->{update}++;
+    $self->{notification}++;
     $self->{log} &&
         $self->{log}->( "I am '$self->{name}' song is '$song->{band}'" );
-    $self->{update_self}++ if ( $song->{band} eq $self->{name} );
+    $self->{notification_self}++ if ( $song->{band} eq $self->{name} );
 }
 
-sub num_updates      { return $_[0]->{update} }
-sub num_updates_self { return $_[0]->{update_self} }
+sub num_notifications      { return $_[0]->{notification} }
+sub num_notifications_self { return $_[0]->{notification_self} }
 
 package # hide from PAUSE
 	DeeJay::Helper;
@@ -87,11 +87,11 @@ sub new {
     }, $class );
 }
 
-sub update {
+sub receive_notification {
     my ( $self, $song ) = @_;
-    $self->{update}++;
+    $self->{notification}++;
 }
 
-sub num_updates { return $_[0]->{update} }
+sub num_notifications { return $_[0]->{notification} }
 
 1;
