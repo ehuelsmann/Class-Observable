@@ -8,20 +8,12 @@ use Scalar::Util 'weaken';
 
 my %O = ();
 
-# Add one or more observers (class name, object or subroutine) to an
-# observable thingy (class or object). Return new number of observers.
-
 sub add_observer {
 	my $self = shift;
 	$O{ $self } ||= [];
 	push @{ $O{ $self } }, @_;
 	return scalar @{ $O{ $self } };
 }
-
-
-# Remove one or more observers from an observable thingy. Return new
-# number of observers.
-# TODO: Will this work with subroutines?
 
 sub delete_observer {
 	my $self = shift;
@@ -36,10 +28,6 @@ sub delete_observer {
 	return scalar keys %ok_observers;
 }
 
-
-# Remove all observers from an observable thingy. Return number of
-# observers removed.
-
 sub delete_all_observers {
 	my $self = shift;
 	my $num_removed = 0;
@@ -49,14 +37,7 @@ sub delete_all_observers {
 	return $num_removed;
 }
 
-
-# Backward compatibility
-
 *delete_observers = \&delete_all_observers;
-
-
-# Tell all observers that a state-change has occurred. No return
-# value.
 
 sub notify_observers {
 	my $self = shift;
@@ -73,10 +54,6 @@ sub notify_observers {
 	}
 }
 
-
-# Retrieve *all* observers for a particular thingy. (See docs for what
-# *all* means.) Returns a list of observers
-
 sub get_observers {
 	my $self = shift;
 	my @observers = ();
@@ -92,21 +69,12 @@ sub get_observers {
 	return @observers;
 }
 
-
-# Copy all observers from one item to another. This also copies
-# observers from parents.
-
 sub copy_observers {
 	my $self = shift;
 	my ( $target ) = @_;
 	$target->add_observer( $self->get_observers );
 	return;
 }
-
-
-# Find observers from parents
-# NB.: we cache the parents the first time, so if you muck with
-# @ISA you'll get unexpected behavior...
 
 {
 	my %P = ();
@@ -120,8 +88,6 @@ sub copy_observers {
 		return map { $_->_obs_get_observers_scoped } @{ $P{ $class } };
 	}
 }
-
-# Return observers ONLY for the specified item
 
 sub _obs_get_observers_scoped {
 	my $self = shift;
