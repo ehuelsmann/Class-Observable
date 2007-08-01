@@ -4,95 +4,122 @@ use warnings;
 package Class::Observable;
 
 use Class::ISA;
-use Scalar::Util 'weaken';
 
-my %O = ();
-
-sub add_observer {
-	my $self = shift;
-	$O{ $self } ||= [];
-	push @{ $O{ $self } }, @_;
-	return scalar @{ $O{ $self } };
+for my $delegate ( qw(
+	add_observer
+	delete_observer
+	delete_all_observers
+) ) {
+	my $sub = sub {
+		my $self = shift;
+		return $self->fetch_watchlist->$delegate( @_ );
+	};
+	no strict 'refs'; *{ $delegate } = $sub;
 }
 
-sub delete_observer {
-	my $self = shift;
-	unless ( ref $O{ $self } eq 'ARRAY' ) {
-		return 0;
-	}
-	my %ok_observers = map { $_ => 1 } @{ $O{ $self } };
-	foreach my $observer_to_remove ( @_ ) {
-		my $removed = delete $ok_observers{ $observer_to_remove };
-	}
-	$O{ $self } = [ keys %ok_observers ];
-	return scalar keys %ok_observers;
-}
-
-sub delete_all_observers {
-	my $self = shift;
-	my $num_removed = 0;
-	return $num_removed unless ( ref $O{ $self } eq 'ARRAY' );
-	$num_removed = scalar @{ $O{ $self } };
-	$O{ $self } = [];
-	return $num_removed;
-}
+sub create_watchlist { Class::Observable::Watchlist->new }
 
 *delete_observers = \&delete_all_observers;
+
+sub get_direct_observers { shift->fetch_watchlist->get_observers }
+
+{
+	my %class_observer;
+	sub fetch_watchlist {
+		my $self = shift;
+		ref $self ? $self->FETCH_WATCHLIST : ( $class_observer{ $self } ||= $self->create_watchlist );
+	}
+}
+
+sub FETCH_WATCHLIST {
+	my $self = shift;
+	require Carp;
+	Carp::croak(
+		ref $self
+			? "FETCH_WATCHLIST implementation missing in Observable '@{[ref $self]}'"
+			: "Class::Observable::FETCH_WATCHLIST called"
+	);
+}
 
 sub notify_observers {
 	my $self = shift;
 	my ( $action, @params ) = @_;
-	$action ||= '';
-	my @observers = $self->get_observers;
-	foreach my $o ( @observers ) {
-		if ( ref $o eq 'CODE' ) {
-			$o->( $self, $action, @params );
-		}
-		else {
-			$o->receive_notification( $self, $action, @params );
-		}
+	$_->( $self, $action || '', @params ) for $self->get_observer_callables;
+	return $self;
+}
+
+BEGIN {
+	my $callable = sub {
+		my ( $thing ) = @_;
+		return ref $thing eq 'CODE' ? $thing : sub { $thing->receive_notification( @_ ) };
+	};
+
+	sub get_observer_callables { map { $callable->( $_ ) } shift->get_observers }
+}
+
+{
+	my %observable_parents;
+
+	sub get_observers {
+		my $self = shift;
+
+		my $class = ref( $self ) || $self;
+		my $supers = $observable_parents{ $class } ||= [ grep { $_->isa( 'Class::Observable' ) } Class::ISA::super_path( $class ) ];
+
+		my @observable_aspect = ref $self ? ( $self, $class, @$supers ) : ( $class, @$supers );
+
+		my %seen;
+		return (
+			grep { not $seen{ $_ }++ }
+			map  { $_->get_direct_observers }
+			@observable_aspect
+		);
 	}
+}
+
+sub copy_observers_to {
+	my $self = shift;
+	my ( $target ) = @_;
+	$target->add_observer( $self->get_observers );
+	return $self;
+}
+
+sub copy_observers_from {
+	my $self = shift;
+	my ( $source ) = @_;
+	$self->add_observer( $source->get_observers );
+	return $self;
+}
+
+package Class::Observable::Watchlist;
+
+sub new { bless [], shift }
+
+sub add_observer {
+	my $self = shift;
+	push @$self, @_;
+	return scalar @$self;
+}
+
+sub delete_observer {
+	my $self = shift;
+	my %deletion_order;
+	undef @deletion_order{ @_ };
+	my $prev_num = @$self;
+	@$self = grep { not exists $deletion_order{ $_ } } @$self;
+	return $prev_num - @$self;
+}
+
+sub delete_all_observers {
+	my $self = shift;
+	my $prev_num = @$self;
+	@$self = ();
+	return $prev_num;
 }
 
 sub get_observers {
 	my $self = shift;
-	my @observers = ();
-	my $class = ref $self;
-	if ( $class ) {
-		push @observers, $self->_obs_get_observers_scoped;
-	}
-	else {
-		$class = $self;
-	}
-	push @observers, $class->_obs_get_observers_scoped,
-	$class->_obs_get_parent_observers;
-	return @observers;
-}
-
-sub copy_observers {
-	my $self = shift;
-	my ( $target ) = @_;
-	$target->add_observer( $self->get_observers );
-	return;
-}
-
-{
-	my %P = ();
-
-	sub _obs_get_parent_observers {
-		my $self = shift;
-		my $class = ref( $self ) || $self;
-
-		$P{ $class } ||= [ grep { $_->isa( 'Class::Observable' ) } Class::ISA::super_path( $class ) ];
-
-		return map { $_->_obs_get_observers_scoped } @{ $P{ $class } };
-	}
-}
-
-sub _obs_get_observers_scoped {
-	my $self = shift;
-	return () unless ( ref $O{ $self } eq 'ARRAY' );
-	return @{ $O{ $self } };
+	return @$self;
 }
 
 1;
