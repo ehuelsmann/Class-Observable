@@ -45,7 +45,7 @@ is( $dj_help->num_notifications, 2,
 
 my $num_prev_observers = $playlist[1]->get_observers;
 eval {
-    $playlist[0]->copy_observers( $playlist[1] )
+    $playlist[0]->copy_observers_to( $playlist[1] )
 };
 ok( ! $@, 'Copied observers run' );
 is( $playlist[1]->get_observers - $num_prev_observers, 1,
