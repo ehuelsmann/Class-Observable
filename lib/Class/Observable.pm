@@ -12,7 +12,7 @@ for my $delegate ( qw(
 ) ) {
 	my $sub = sub {
 		my $self = shift;
-		return $self->fetch_watchlist->$delegate( @_ );
+		return $self->FETCH_WATCHLIST->$delegate( @_ );
 	};
 	no strict 'refs'; *{ $delegate } = $sub;
 }
@@ -21,24 +21,30 @@ sub create_watchlist { Class::Observable::Watchlist->new }
 
 *delete_observers = \&delete_all_observers;
 
-sub get_direct_observers { shift->fetch_watchlist->get_observers }
+sub get_direct_observers { shift->FETCH_WATCHLIST->get_observers }
 
-{
+BEGIN {
 	my %class_observer;
-	sub fetch_watchlist {
-		my $self = shift;
-		ref $self ? $self->FETCH_WATCHLIST : ( $class_observer{ $self } ||= $self->create_watchlist );
-	}
-}
 
-sub FETCH_WATCHLIST {
-	my $self = shift;
-	require Carp;
-	Carp::croak(
-		ref $self
-			? "FETCH_WATCHLIST implementation missing in Observable '@{[ref $self]}'"
-			: "Class::Observable::FETCH_WATCHLIST called"
-	);
+	sub FETCH_WATCHLIST {
+		my $self = shift;
+
+		my $watchlist_r;
+
+		if ( not ref $self ) {
+			$watchlist_r = \$class_observer{ $self };
+		}
+		elsif ( eval { exists $self->{''}; 1 } ) {
+			$watchlist_r = \$self->{ 'Class::Observable::Watchlist' };
+		}
+		else {
+			require Carp;
+			my $class = ref $self;
+			Carp::croak( "Observable '$class' is not a hash-based object; implement FETCH_WATCHLIST" );
+		}
+
+		return $$watchlist_r ||= $self->create_watchlist;
+	}
 }
 
 sub notify_observers {

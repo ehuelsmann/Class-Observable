@@ -13,12 +13,9 @@ sub new {
         band      => $band,
         name      => $name,
         log       => $log,
-        watchlist => $self->create_watchlist,
     );
     return $self;
 }
-
-sub FETCH_WATCHLIST { shift->{ watchlist } }
 
 sub play {
     my ( $self ) = @_;

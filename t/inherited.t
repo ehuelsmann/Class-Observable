@@ -11,7 +11,6 @@ BEGIN {
     use base qw( Class::Observable );
     sub new { my $self = bless {}, $_[0]; return $self }
     sub yodel { $_[0]->notify_observers }
-    sub FETCH_WATCHLIST { my $self = shift; $self->{ watchlist } ||= $self->create_watchlist }
 
     package Baz;
     use base qw( Foo );
