@@ -100,33 +100,41 @@ sub copy_observers_from {
 
 package Class::Observable::Watchlist;
 
-sub new { bless [], shift }
+sub new { bless { watchlist => [] }, shift }
 
 sub add_observer {
 	my $self = shift;
-	push @$self, @_;
-	return scalar @$self;
+	return push @{ $self->{ watchlist } }, @_;
 }
 
 sub delete_observer {
 	my $self = shift;
+
+	my $watchlist = $self->{ watchlist };
+	my $prev_num = @$watchlist;
+
 	my %deletion_order;
-	undef @deletion_order{ @_ };
-	my $prev_num = @$self;
-	@$self = grep { not exists $deletion_order{ $_ } } @$self;
-	return $prev_num - @$self;
+	@deletion_order{ @_ } = ();
+
+	@$watchlist = grep { not exists $deletion_order{ $_ } } @$watchlist;
+
+	return $prev_num - @$watchlist;
 }
 
 sub delete_all_observers {
 	my $self = shift;
-	my $prev_num = @$self;
-	@$self = ();
+
+	my $watchlist = $self->{ watchlist };
+	my $prev_num = @$watchlist;
+
+	@$watchlist = ();
+
 	return $prev_num;
 }
 
 sub get_observers {
 	my $self = shift;
-	return @$self;
+	return @{ $self->{ watchlist } };
 }
 
 1;
