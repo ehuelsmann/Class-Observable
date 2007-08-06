@@ -76,6 +76,10 @@ sub copy_observers_from {
 	return $self;
 }
 
+sub add_observer ;
+sub delete_observer ;
+sub delete_all_observers ;
+
 for my $delegate ( qw(
 	add_observer
 	delete_observer
