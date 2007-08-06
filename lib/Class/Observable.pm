@@ -5,25 +5,7 @@ package Class::Observable;
 
 use Class::ISA;
 
-my $get_watchlist;
-
-BEGIN {
-	for my $delegate ( qw(
-		add_observer
-		delete_observer
-		delete_all_observers
-	) ) {
-		my $sub = sub {
-			my $self = shift;
-			return $self->$get_watchlist->$delegate( @_ );
-		};
-		no strict 'refs'; *{ $delegate } = $sub;
-	}
-
-	*delete_observers = \&delete_all_observers;
-}
-
-$get_watchlist = do {
+my $get_watchlist = do {
 	my %class_observer;
 
 	sub {
@@ -92,6 +74,19 @@ sub copy_observers_from {
 	my ( $source ) = @_;
 	$self->add_observer( $source->get_observers );
 	return $self;
+}
+
+for my $delegate ( qw(
+	add_observer
+	delete_observer
+	delete_all_observers
+) ) {
+	my $method = sub {
+		my $self = shift;
+		return $self->$get_watchlist->$delegate( @_ );
+	};
+
+	{ no strict 'refs'; *{ $delegate } = $method; }
 }
 
 package Class::Observable::Watchlist;
