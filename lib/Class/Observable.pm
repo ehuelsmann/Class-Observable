@@ -25,7 +25,7 @@ sub create_watchlist { Class::Observable::Watchlist->new }
 
 sub get_direct_observers { shift->FETCH_WATCHLIST->get_observers }
 
-BEGIN {
+{
 	my %class_observer;
 
 	sub FETCH_WATCHLIST {
@@ -51,18 +51,17 @@ BEGIN {
 
 sub notify_observers {
 	my $self = shift;
-	my ( $action, @params ) = @_;
-	$_->( $self, $action || '', @params ) for $self->get_observer_callables;
+	my $action = shift;
+
+	$action = '' unless defined $action;
+
+	for my $observer ( $self->get_observers ) {
+		ref $observer eq 'CODE'
+			? $observer->( $self, $action, @_ )
+			: $observer->receive_notification( $self, $action, @_ );
+	}
+
 	return $self;
-}
-
-BEGIN {
-	my $callable = sub {
-		my ( $thing ) = @_;
-		return ref $thing eq 'CODE' ? $thing : sub { $thing->receive_notification( @_ ) };
-	};
-
-	sub get_observer_callables { map { $callable->( $_ ) } shift->get_observers }
 }
 
 {
