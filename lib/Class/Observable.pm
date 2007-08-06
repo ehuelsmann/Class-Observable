@@ -13,7 +13,7 @@ BEGIN {
 	) ) {
 		my $sub = sub {
 			my $self = shift;
-			return $self->FETCH_WATCHLIST->$delegate( @_ );
+			return $self->get_watchlist->$delegate( @_ );
 		};
 		no strict 'refs'; *{ $delegate } = $sub;
 	}
@@ -23,30 +23,33 @@ BEGIN {
 
 sub create_watchlist { Class::Observable::Watchlist->new }
 
-sub get_direct_observers { shift->FETCH_WATCHLIST->get_observers }
+sub get_direct_observers { shift->get_watchlist->get_observers }
 
 {
 	my %class_observer;
 
-	sub FETCH_WATCHLIST {
+	sub get_watchlist {
 		my $self = shift;
-
-		my $watchlist_r;
-
-		if ( not ref $self ) {
-			$watchlist_r = \$class_observer{ $self };
-		}
-		elsif ( eval { exists $self->{''}; 1 } ) {
-			$watchlist_r = \$self->{ 'Class::Observable::Watchlist' };
-		}
-		else {
-			require Carp;
-			my $class = ref $self;
-			Carp::croak( "Observable '$class' is not a hash-based object; implement FETCH_WATCHLIST" );
-		}
-
-		return $$watchlist_r ||= $self->create_watchlist;
+		return ref $self
+			? $self->INSTANCE_WATCHLIST
+			: $class_observer{ $self } ||= $self->create_watchlist;
 	}
+}
+
+sub INSTANCE_WATCHLIST {
+	my $self = shift;
+
+	return $self->{ 'Class::Observable::Watchlist' } ||= $self->create_watchlist
+		if eval { exists $self->{''}; 1 };  # if $self quacks like a hash
+	
+	my $self_class = ref $self;
+
+	my $error = $self_class
+		? "Observable '$self_class' is not a hash-based object; implement INSTANCE_WATCHLIST"
+		: "Called INSTANCE_WATCHLIST as a class method on '$self'";
+
+	require Carp;
+	Carp::croak( $error );
 }
 
 sub notify_observers {
