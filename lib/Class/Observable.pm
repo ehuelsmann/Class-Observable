@@ -21,7 +21,7 @@ BEGIN {
 	*delete_observers = \&delete_all_observers;
 }
 
-sub create_watchlist { Class::Observable::Watchlist->new }
+sub create_watchlist { Class::Observable::Watchlist->new( shift ) }
 
 sub get_direct_observers { shift->get_watchlist->get_observers }
 
@@ -67,24 +67,15 @@ sub notify_observers {
 	return $self;
 }
 
-{
-	my %observable_parents;
+sub get_observers {
+	my $self = shift;
+	my $watchlist = $self->get_watchlist;
 
-	sub get_observers {
-		my $self = shift;
+	my @observer = $watchlist->get_observers;
+	if ( my $class = ref $self ) { push @observer, $class->get_watchlist->get_observers; }
+	push @observer, map { $_->get_watchlist->get_observers } $watchlist->get_observable_parents;
 
-		my $class = ref( $self ) || $self;
-		my $supers = $observable_parents{ $class } ||= [ grep { $_->isa( 'Class::Observable' ) } Class::ISA::super_path( $class ) ];
-
-		my @observable_aspect = ref $self ? ( $self, $class, @$supers ) : ( $class, @$supers );
-
-		my %seen;
-		return (
-			grep { not $seen{ $_ }++ }
-			map  { $_->get_direct_observers }
-			@observable_aspect
-		);
-	}
+	return do { my %seen; grep { not $seen{ $_ }++ } @observer };
 }
 
 sub copy_observers_to {
@@ -103,7 +94,26 @@ sub copy_observers_from {
 
 package Class::Observable::Watchlist;
 
-sub new { bless { watchlist => [] }, shift }
+my $cached_observable_parents = do {
+	my %observable_parents;
+	sub {
+		my ( $class ) = @_;
+		return $observable_parents{ $class }
+			||= [ grep { $_->isa( 'Class::Observable' ) } Class::ISA::super_path( $class ) ];
+	};
+};
+
+sub new {
+	my $self = bless {}, shift;
+	my ( $self_owner ) = @_;
+
+	my $owner_class = ref( $self_owner ) || $self_owner;
+
+	$self->{ watchlist } = [];
+	$self->{ observable_parents } = $cached_observable_parents->( $owner_class );
+
+	return $self;
+}
 
 sub add_observer {
 	my $self = shift;
@@ -138,6 +148,11 @@ sub delete_all_observers {
 sub get_observers {
 	my $self = shift;
 	return @{ $self->{ watchlist } };
+}
+
+sub get_observable_parents {
+	my $self = shift;
+	return @{ $self->{ observable_parents } };
 }
 
 1;
