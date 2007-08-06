@@ -5,6 +5,8 @@ package Class::Observable;
 
 use Class::ISA;
 
+my $get_watchlist;
+
 BEGIN {
 	for my $delegate ( qw(
 		add_observer
@@ -13,7 +15,7 @@ BEGIN {
 	) ) {
 		my $sub = sub {
 			my $self = shift;
-			return $self->get_watchlist->$delegate( @_ );
+			return $self->$get_watchlist->$delegate( @_ );
 		};
 		no strict 'refs'; *{ $delegate } = $sub;
 	}
@@ -21,20 +23,20 @@ BEGIN {
 	*delete_observers = \&delete_all_observers;
 }
 
-sub create_watchlist { Class::Observable::Watchlist->new( shift ) }
-
-sub get_direct_observers { shift->get_watchlist->get_observers }
-
-{
+$get_watchlist = do {
 	my %class_observer;
 
-	sub get_watchlist {
+	sub {
 		my $self = shift;
 		return ref $self
 			? $self->INSTANCE_WATCHLIST
 			: $class_observer{ $self } ||= $self->create_watchlist;
-	}
-}
+	};
+};
+
+sub create_watchlist { Class::Observable::Watchlist->new( shift ) }
+
+sub get_direct_observers { shift->$get_watchlist->get_observers }
 
 sub INSTANCE_WATCHLIST {
 	my $self = shift;
@@ -69,11 +71,11 @@ sub notify_observers {
 
 sub get_observers {
 	my $self = shift;
-	my $watchlist = $self->get_watchlist;
+	my $watchlist = $self->$get_watchlist;
 
 	my @observer = $watchlist->get_observers;
-	if ( my $class = ref $self ) { push @observer, $class->get_watchlist->get_observers; }
-	push @observer, map { $_->get_watchlist->get_observers } $watchlist->get_observable_parents;
+	if ( my $class = ref $self ) { push @observer, $class->$get_watchlist->get_observers; }
+	push @observer, map { $_->$get_watchlist->get_observers } $watchlist->get_observable_parents;
 
 	return do { my %seen; grep { not $seen{ $_ }++ } @observer };
 }
