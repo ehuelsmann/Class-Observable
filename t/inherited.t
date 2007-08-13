@@ -33,23 +33,26 @@ $foo->yodel;
 is( $observations[0], "Observation A from [Foo]", "Catch notification from parent" );
 
 my $baz_a = Baz->new;
+@observations = ();
 $baz_a->yell;
-is( $observations[1], "Observation B from [Baz]", "Catch notification from child" );
-is( $observations[2], "Observation A from [Baz]", "Catch parent notification from child" );
+is( $observations[0], "Observation B from [Baz]", "Catch notification from child" );
+is( $observations[1], "Observation A from [Baz]", "Catch parent notification from child" );
 
 my $baz_b = Baz->new;
 ok( $baz_b->add_observer( \&observer_c ), "Add observer C to object" );
 is( scalar $baz_b->get_observers, 3, "Count observers in object + class" );
 
+@observations = ();
 $baz_b->yell;
-is( $observations[3], "Observation C from [Baz]", "Catch notification (object) from child" );
-is( $observations[4], "Observation B from [Baz]", "Catch notification (class) from child" );
-is( $observations[5], "Observation A from [Baz]", "Catch parent notification from child" );
+is( $observations[0], "Observation C from [Baz]", "Catch notification (object) from child" );
+is( $observations[1], "Observation B from [Baz]", "Catch notification (class) from child" );
+is( $observations[2], "Observation A from [Baz]", "Catch parent notification from child" );
 
 my $baz_c = Baz->new;
+@observations = ();
 $baz_c->yell;
-is( $observations[6], "Observation B from [Baz]", "Catch notification from child (after object add)" );
-is( $observations[7], "Observation A from [Baz]", "Catch parent notification from child (after object add)" );
+is( $observations[0], "Observation B from [Baz]", "Catch notification from child (after object add)" );
+is( $observations[1], "Observation A from [Baz]", "Catch parent notification from child (after object add)" );
 
 
 is( $baz_b->delete_all_observers, 1, 'Delete object observers' );
