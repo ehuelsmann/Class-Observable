@@ -2,23 +2,14 @@ package Class::Observable::Watchlist;
 
 use strict;
 
-my $cached_observable_parents = do {
-	my %observable_parents;
-	sub {
-		my ( $class ) = @_;
-		return $observable_parents{ $class }
-			||= [ grep { $_->isa( 'Class::Observable' ) } Class::ISA::super_path( $class ) ];
-	};
-};
-
 sub new {
 	my $self = bless {}, shift;
 	my ( $self_owner ) = @_;
 
-	my $owner_class = ref( $self_owner ) || $self_owner;
-
-	$self->{ watchlist } = [];
-	$self->{ observable_parents } = $cached_observable_parents->( $owner_class );
+	%$self = (
+		watchlist   => [],
+		owner_class => ref( $self_owner ) || $self_owner,
+	);
 
 	return $self;
 }
@@ -58,9 +49,18 @@ sub get_observers {
 	return @{ $self->{ watchlist } };
 }
 
-sub get_observable_parents {
-	my $self = shift;
-	return @{ $self->{ observable_parents } };
+{
+	my %observable_parents;
+
+	sub get_observable_parents {
+		my $self = shift;
+		my $class = $self->{ owner_class };
+
+		my $parents = $observable_parents{ $class }
+			||= [ grep { $_->isa( 'Class::Observable' ) } Class::ISA::super_path( $class ) ];
+
+		return @$parents[ 0 .. $#$parents ];
+	}
 }
 
 1;
