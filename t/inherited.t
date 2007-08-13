@@ -7,14 +7,14 @@ use Class::Observable;
 use lib 't/lib';
 
 BEGIN {
-    package Foo;
-    use base qw( Class::Observable );
-    sub new { my $self = bless {}, $_[0]; return $self }
-    sub yodel { $_[0]->notify_observers }
+	package Foo;
+	use base qw( Class::Observable );
+	sub new { my $self = bless {}, $_[0]; return $self }
+	sub yodel { $_[0]->notify_observers }
 
-    package Baz;
-    use base qw( Foo );
-    sub yell { $_[0]->notify_observers }
+	package Baz;
+	use base qw( Foo );
+	sub yell { $_[0]->notify_observers }
 }
 
 my @observations = ();
