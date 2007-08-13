@@ -8,12 +8,12 @@ use lib 't/lib';
 
 BEGIN {
 	package Foo;
-	use base qw( Class::Observable );
+	@Foo::ISA = qw( Class::Observable );
 	sub new { my $self = bless {}, $_[0]; return $self }
 	sub yodel { $_[0]->notify_observers }
 
 	package Baz;
-	use base qw( Foo );
+	@Baz::ISA = qw( Foo );
 	sub yell { $_[0]->notify_observers }
 }
 
