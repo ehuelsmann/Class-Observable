@@ -7,15 +7,11 @@ use Class::Observable;
 use lib 't/lib';
 
 BEGIN {
-	package Parent;
 	@Parent::ISA = qw( Class::Observable );
-	sub new { my $self = bless {}, $_[0]; return $self }
-	sub yodel { $_[0]->notify_observers }
-
-	package Child;
-	@Child::ISA = qw( Parent );
-	sub yell { $_[0]->notify_observers }
+	@Child::ISA  = qw( Parent );
 }
+
+sub Parent::new { my $self = bless {}, $_[0]; return $self }
 
 my @receipt;
 sub observer_a { push @receipt, "Parent notifies " . ref( $_[0] ) }
@@ -30,12 +26,12 @@ is( scalar Child->get_observers, 2, '... but two in Child' );
 
 my $foo = Parent->new;
 @receipt = ();
-$foo->yodel;
+$foo->notify_observers;
 is( $receipt[0], "Parent notifies Parent", "Catch notification from parent" );
 
 my $baz_a = Child->new;
 @receipt = ();
-$baz_a->yell;
+$baz_a->notify_observers;
 is( $receipt[0], "Child notifies Child", "Catch notification from child" );
 is( $receipt[1], "Parent notifies Child", "Catch parent notification from child" );
 
@@ -44,14 +40,14 @@ ok( $baz_b->add_observer( \&observer_c ), "Add observer C to instance" );
 is( scalar $baz_b->get_observers, 3, "Count observers in instance + class" );
 
 @receipt = ();
-$baz_b->yell;
+$baz_b->notify_observers;
 is( $receipt[0], "Child instance notifies Child", "Catch notification (instance) from child" );
 is( $receipt[1], "Child notifies Child", "Catch notification (class) from child" );
 is( $receipt[2], "Parent notifies Child", "Catch parent notification from child" );
 
 my $baz_c = Child->new;
 @receipt = ();
-$baz_c->yell;
+$baz_c->notify_observers;
 is( $receipt[0], "Child notifies Child", "Catch notification from child (after instance add)" );
 is( $receipt[1], "Parent notifies Child", "Catch parent notification from child (after instance add)" );
 
