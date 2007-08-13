@@ -23,7 +23,7 @@ ok( Song->add_observer( $dj ), 'Add main class-level observer...' );
 ok( Song->add_observer( $dj_moby ), '... and secondary one' );
 is( scalar Song->get_observers, 2, '... and check that the number of class-level observers is right' );
 
-is( $playlist[0]->add_observer( $dj_guest ), 1, 'Add instance observer' );
+ok( $playlist[0]->add_observer( $dj_guest ), 'Add instance observer' );
 is( scalar $playlist[0]->get_observers, 3, '... and check that the instance sees the right total of observers' );
 
 $dj->play_next;

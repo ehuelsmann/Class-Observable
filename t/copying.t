@@ -20,7 +20,7 @@ my $omeotherthing = Something->new;
 ok( $omething->copy_observers_to( $omeotherthing ), 'Copy observers from one instance to the other' );
 is( scalar $omeotherthing->get_observers, 2, '... and check that the number of total observers on that instance is correct' );
 
-is( $omething->delete_direct_observers, 1, 'Delete object-level observers' );
+ok( $omething->delete_direct_observers, 'Delete object-level observers' );
 is( scalar $omething->get_direct_observers, 0, '... and check that they\'re gone' );
 is( scalar $omething->get_observers, 1, '... but the instance still sees the class-level observer' );
 
