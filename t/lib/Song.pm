@@ -7,35 +7,18 @@ package # hide from PAUSE
 use base qw( Class::Observable );
 
 sub new {
-    my ( $class, $band, $name, $log ) = @_;
-    my $self = bless {}, $class;
-    %$self = (
-        band      => $band,
-        name      => $name,
-        log       => $log,
-    );
-    return $self;
+	my $class = shift;
+	my ( $band, $name ) = @_;
+	return bless {
+		band => $band,
+		name => $name,
+	}, $class;
 }
 
 sub play {
-    my ( $self ) = @_;
-    $self->notify_observers( 'start_play' );
-    $self->{log} &&
-        $self->{log}->( "Playing [$self->{name}] by [$self->{band}]" );
-    $self->stop;
-}
-
-sub stop {
-    my ( $self ) = @_;
-    $self->{log} &&
-        $self->{log}->( "Stopped [$self->{name}] by [$self->{band}]" );
-    $self->notify_observers( 'stop_play' );
-}
-
-sub DESTROY {
-    my ( $self ) = @_;
-    $self->{log} &&
-        $self->{log}->( "Destroying '$self->{name}'" );
+	my $self = shift;
+	$self->notify_observers( 'begin_song' );
+	$self->notify_observers( 'end_song' );
 }
 
 1;

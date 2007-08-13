@@ -5,93 +5,76 @@ package # hide from PAUSE
 	DeeJay;
 
 sub new {
-    my ( $class, $playlist, $log ) = @_;
-    $playlist ||= [];
-    return bless( {
-        playlist  => $playlist,
-        num_songs => scalar @{ $playlist },
-        $log      => $log,
-    }, $class );
-}
-
-sub start_party {
-    my ( $self ) = @_;
-    $self->{log} &&
-        $self->{log}->( "Let's get this party started!" );
-    $self->{current_song} = 0;
-    $self->{playlist}[0]->play;
-}
-
-sub end_party {
-    my ( $self ) = @_;
-    $self->{log} &&
-        $self->{log}->( "Party's over, time to go home" );
+	my $class = shift;
+	return bless { notification => 0 }, $class;
 }
 
 sub receive_notification {
-    my ( $self, $song, $action ) = @_;
-    $self->{log} &&
-        $self->{log}->( "Caught notification [$action] from [$song->{band}]" );
-    $self->{notification}++;
-    return unless ( $action eq 'stop_play' );
-    $self->{notification_stop}++;
-    $self->{current_song}++;
-    if ( $self->{current_song} == $self->{num_songs} ) {
-        return $self->end_party;
-    }
-    $self->{playlist}[ $self->{current_song} ]->play;
+	my $self = shift;
+	my ( $song, $action ) = @_;
+	$self->{notification}++;
 }
 
-sub num_notifications      { return $_[0]->{notification} }
-sub num_notifications_stop { return $_[0]->{notification_stop} }
-
-sub DESTROY {
-    my ( $self ) = @_;
-    $self->{log} &&
-        $self->{log}->( "DeeJay retiring" );
-}
+sub num_notifications { shift->{notification} }
 
 package # hide from PAUSE
-	DeeJay::Selfish;
+	DeeJay::Playing;
 
-# This DJ only responds to his/her own songs
+@DeeJay::Playing::ISA = qw( DeeJay );
 
 sub new {
-    my ( $class, $my_name, $log ) = @_;
-    return bless({
-        name        => $my_name,
-        notification      => 0,
-        notification_self => 0,
-        log         => $log,
-    }, $class );
+	my $class = shift;
+	my ( $playlist ) = @_;
+
+	my $self = __PACKAGE__->SUPER::new( @_ );
+	$self->{ playlist }          = $playlist || [];
+	$self->{ current_song }      = -1;
+	$self->{ songs_played } = 0;
+
+	return $self;
+}
+
+sub play_next {
+	my $self = shift;
+	return if $self->{ current_song } == $#{ $self->{ playlist } };
+	$self->{playlist}[ ++$self->{current_song} ]->play;
 }
 
 sub receive_notification {
-    my ( $self, $song ) = @_;
-    $self->{notification}++;
-    $self->{log} &&
-        $self->{log}->( "I am '$self->{name}' song is '$song->{band}'" );
-    $self->{notification_self}++ if ( $song->{band} eq $self->{name} );
+	my $self = shift;
+	my ( $song, $action ) = @_;
+	$self->SUPER::receive_notification( @_ );
+	if( $action eq 'end_song' ) {
+		$self->{songs_played}++;
+		$self->play_next;
+	}
 }
 
-sub num_notifications      { return $_[0]->{notification} }
-sub num_notifications_self { return $_[0]->{notification_self} }
+sub num_songs_played { shift->{songs_played} }
 
 package # hide from PAUSE
-	DeeJay::Helper;
+	DeeJay::Selfish; # This DJ only responds to his/her own songs
+
+@DeeJay::Selfish::ISA = qw( DeeJay );
 
 sub new {
-    my ( $class, $log ) = @_;
-    return bless({
-        log => $log,
-    }, $class );
+	my $class = shift;
+	my ( $my_name ) = @_;
+
+	my $self = __PACKAGE__->SUPER::new( @_ );
+	$self->{ name } = $my_name;
+	$self->{ notification_self } = 0;
+
+	return $self;
 }
 
 sub receive_notification {
-    my ( $self, $song ) = @_;
-    $self->{notification}++;
+	my $self = shift;
+	my ( $song, $action ) = @_;
+	$self->SUPER::receive_notification( @_ );
+	$self->{notification_self}++ if $song->{band} eq $self->{name};
 }
 
-sub num_notifications { return $_[0]->{notification} }
+sub num_notifications_self { shift->{notification_self} }
 
 1;
