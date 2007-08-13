@@ -21,4 +21,7 @@ sub play {
 	$self->notify_observers( 'end_song' );
 }
 
+sub band { shift->{ band } }
+sub name { shift->{ name } }
+
 1;
