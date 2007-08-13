@@ -16,21 +16,21 @@ sub new {
 
 sub add {
 	my $self = shift;
-	return push @{ $self->{ watchlist } }, @_;
+	push @{ $self->{ watchlist } }, @_;
+	return $self;
 }
 
 sub delete {
 	my $self = shift;
 
 	my $watchlist = $self->{ watchlist };
-	my $prev_num = @$watchlist;
 
 	my %deletion_order;
 	@deletion_order{ @_ } = ();
 
 	@$watchlist = grep { not exists $deletion_order{ $_ } } @$watchlist;
 
-	return $prev_num - @$watchlist;
+	return;
 }
 
 sub clear {
@@ -41,7 +41,7 @@ sub clear {
 
 	@$watchlist = ();
 
-	return $prev_num;
+	return $self;
 }
 
 sub list {

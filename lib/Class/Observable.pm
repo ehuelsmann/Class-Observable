@@ -77,9 +77,9 @@ sub copy_observers_from {
 	return $self;
 }
 
-sub add_observer            { shift->$get_watchlist->add( @_ ) }
-sub delete_observer         { shift->$get_watchlist->delete( @_ ) }
-sub delete_direct_observers { shift->$get_watchlist->clear() }
+sub add_observer            { my $self = shift; $self->$get_watchlist->add( @_ ); return $self }
+sub delete_observer         { my $self = shift; $self->$get_watchlist->delete( @_ ); return $self }
+sub delete_direct_observers { my $self = shift; $self->$get_watchlist->clear(); return $self }
 
 1;
 
