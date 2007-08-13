@@ -24,7 +24,7 @@ sub get_direct_observers { shift->$get_watchlist->get_observers }
 sub INSTANCE_WATCHLIST {
 	my $self = shift;
 
-	return $self->{ 'Class::Observable::Watchlist' } ||= $self->create_watchlist
+	return $self->{ '::Class::Observable::watchlist_instance::' } ||= $self->create_watchlist
 		if eval { exists $self->{''}; 1 };  # if $self quacks like a hash
 	
 	my $self_class = ref $self;
