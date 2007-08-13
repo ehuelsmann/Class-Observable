@@ -67,15 +67,15 @@ ok( received( 'Child notifies Child instance observers' ), '... and check that t
 ok( received( 'Child notifies Child observers' ), '... as well as the class observers' );
 ok( received( 'Child notifies Parent observers' ), '... and the superclass observers' );
 
-ok( $ch2->delete_all_observers, 'Delete instance observers...' );
+ok( $ch2->delete_direct_observers, 'Delete instance observers...' );
 is( scalar $ch2->get_direct_observers, 0, '... and check that it has none' );
 is( scalar $ch2->get_observers, 2, '... but its inherited observers are unaffected' );
 
-ok( Child->delete_all_observers, 'Delete Child observers...' );
+ok( Child->delete_direct_observers, 'Delete Child observers...' );
 is( scalar Child->get_direct_observers, 0, '... and check that it has none' );
 is( scalar $ch2->get_observers, 1, '... and that that this affects instances also' );
 
-ok( Parent->delete_all_observers, 'Delete parent observers...' );
+ok( Parent->delete_direct_observers, 'Delete parent observers...' );
 is( scalar Parent->get_direct_observers, 0, '... and check that it has none' );
 is( scalar $ch2->get_observers, 0, '... and that that this affects instances also' );
 

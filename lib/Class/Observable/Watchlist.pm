@@ -14,12 +14,12 @@ sub new {
 	return $self;
 }
 
-sub add_observer {
+sub add {
 	my $self = shift;
 	return push @{ $self->{ watchlist } }, @_;
 }
 
-sub delete_observer {
+sub delete {
 	my $self = shift;
 
 	my $watchlist = $self->{ watchlist };
@@ -33,7 +33,7 @@ sub delete_observer {
 	return $prev_num - @$watchlist;
 }
 
-sub delete_all_observers {
+sub clear {
 	my $self = shift;
 
 	my $watchlist = $self->{ watchlist };
@@ -44,7 +44,7 @@ sub delete_all_observers {
 	return $prev_num;
 }
 
-sub get_observers {
+sub list {
 	my $self = shift;
 	return @{ $self->{ watchlist } };
 }

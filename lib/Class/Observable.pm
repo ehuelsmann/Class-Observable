@@ -19,7 +19,7 @@ my $get_watchlist = do {
 
 sub create_watchlist { Class::Observable::Watchlist->new( shift ) }
 
-sub get_direct_observers { shift->$get_watchlist->get_observers }
+sub get_direct_observers { shift->$get_watchlist->list }
 
 sub INSTANCE_WATCHLIST {
 	my $self = shift;
@@ -56,9 +56,9 @@ sub get_observers {
 	my $self = shift;
 	my $watchlist = $self->$get_watchlist;
 
-	my @observer = $watchlist->get_observers;
-	if ( my $class = ref $self ) { push @observer, $class->$get_watchlist->get_observers; }
-	push @observer, map { $_->$get_watchlist->get_observers } $watchlist->get_observable_parents;
+	my @observer = $watchlist->list;
+	if ( my $class = ref $self ) { push @observer, $class->$get_watchlist->list; }
+	push @observer, map { $_->$get_watchlist->list } $watchlist->get_observable_parents;
 
 	return do { my %seen; grep { not $seen{ $_ }++ } @observer };
 }
@@ -77,22 +77,9 @@ sub copy_observers_from {
 	return $self;
 }
 
-sub add_observer ;
-sub delete_observer ;
-sub delete_all_observers ;
-
-for my $delegate ( qw(
-	add_observer
-	delete_observer
-	delete_all_observers
-) ) {
-	my $method = sub {
-		my $self = shift;
-		return $self->$get_watchlist->$delegate( @_ );
-	};
-
-	{ no strict 'refs'; *{ $delegate } = $method; }
-}
+sub add_observer            { shift->$get_watchlist->add( @_ ) }
+sub delete_observer         { shift->$get_watchlist->delete( @_ ) }
+sub delete_direct_observers { shift->$get_watchlist->clear() }
 
 1;
 

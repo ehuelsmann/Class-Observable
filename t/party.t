@@ -39,9 +39,9 @@ $playlist[0]->copy_observers_to( $playlist[1] );
 is( $playlist[1]->get_observers - $num_prev_observers, 1, 'Copied correct number of observers' );
 is( scalar $playlist[1]->get_observers, 3, 'New object has correct number of observers' );
 
-is( $playlist[0]->delete_all_observers, 1, 'Delete object-level observers' );
-is( $playlist[1]->delete_all_observers, 3, 'Delete object-level observers' );
+is( $playlist[0]->delete_direct_observers, 1, 'Delete object-level observers' );
+is( $playlist[1]->delete_direct_observers, 3, 'Delete object-level observers' );
 is( Song->delete_observer( $dj ), 1, 'Delete object from class-level observers' );
-is( Song->delete_all_observers, 1, 'Delete remaining class-level observers' );
+is( Song->delete_direct_observers, 1, 'Delete remaining class-level observers' );
 
 done_testing;
