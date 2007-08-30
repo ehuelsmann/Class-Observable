@@ -19,13 +19,11 @@ my $get_watchlist = do {
 
 sub create_watchlist { Class::Observable::Watchlist->new( shift ) }
 
-sub get_direct_observers { shift->$get_watchlist->list }
-
 sub INSTANCE_WATCHLIST {
 	my $self = shift;
 
 	return $self->{ '::Class::Observable::watchlist_instance::' } ||= $self->create_watchlist
-		if eval { exists $self->{''}; 1 };  # if $self quacks like a hash
+		if eval { %$self };  # if $self quacks like a hash
 	
 	my $self_class = ref $self;
 
@@ -77,6 +75,7 @@ sub copy_observers_from {
 	return $self;
 }
 
+sub get_direct_observers    { my $self = shift; return $self->$get_watchlist->list }
 sub add_observer            { my $self = shift; $self->$get_watchlist->add( @_ ); return $self }
 sub delete_observer         { my $self = shift; $self->$get_watchlist->delete( @_ ); return $self }
 sub delete_direct_observers { my $self = shift; $self->$get_watchlist->clear(); return $self }
@@ -87,476 +86,140 @@ __END__
 
 =head1 SYNOPSIS
 
-  # Define an observable class
- 
-  package My::Object;
- 
-  use base qw( Class::Observable );
- 
-  # Tell all classes/objects observing this object that a state-change
-  # has occurred
- 
-  sub create {
-      my $self = shift;
-      eval { $self->_perform_create() };
-      if ( $@ ) {
-          My::Exception->throw( "Error saving: $@" );
-      }
-      $self->notify_observers();
-  }
- 
-  # Same thing, except make the type of change explicit and pass
-  # arguments.
- 
-  sub edit {
-      my $self = shift;
-      my %old_values = $self->extract_values;
-      eval { $self->_perform_edit() };
-      if ( $@ ) {
-          My::Exception->throw( "Error saving: $@" );
-      }
-      $self->notify_observers( 'edit', old_values => \%old_values );
-  }
- 
-  # Define an observer
- 
-  package My::Observer;
- 
-  sub receive_notification {
-      my $class = shift;
-      my ( $object, $action ) = @_;
-      unless ( $action ) {
-          warn "Cannot operation on [", $object->id, "] without action";
-          return;
-      }
-      $class->_on_save( $object )   if ( $action eq 'save' );
-      $class->_on_update( $object ) if ( $action eq 'update' );
-  }
- 
-  # Register the observer class with all instances of the observable
-  # class
- 
-  My::Object->add_observer( 'My::Observer' );
- 
-  # Register the observer class with a single instance of the
-  # observable class
- 
-  my $object = My::Object->new( 'foo' );
-  $object->add_observer( 'My::Observer' );
- 
-  # Register an observer object the same way
- 
-  my $observer = My::Observer->new( 'bar' );
-  My::Object->add_observer( $observer );
-  my $object = My::Object->new( 'foo' );
-  $object->add_observer( $observer );
- 
-  # Register an observer using a subroutine
- 
-  sub catch_observation { ... }
- 
-  My::Object->add_observer( \&catch_observation );
-  my $object = My::Object->new( 'foo' );
-  $object->add_observer( \&catch_observation );
- 
-  # Define the observable class as a parent and allow the observers to
-  # be used by the child
- 
-  package My::Parent;
- 
-  use strict;
-  use base qw( Class::Observable );
- 
-  sub prepare_for_bed {
-      my $self = shift;
-      $self->notify_observers( 'prepare_for_bed' );
-  }
- 
-  sub brush_teeth {
-      my $self = shift;
-      $self->_brush_teeth( time => 45 );
-      $self->_floss_teeth( time => 30 );
-      $self->_gargle( time => 30 );
-  }
- 
-  sub wash_face { ... }
- 
- 
-  package My::Child;
- 
-  use strict;
-  use base qw( My::Parent );
- 
-  sub brush_teeth {
-      my $self = shift;
-      $self->_wet_toothbrush();
-  }
- 
-  sub wash_face { return }
- 
-  # Create a class-based observer
- 
-  package My::ParentRules;
- 
-  sub receive_notification {
-      my $self = shift;
-      my ( $action ) = @_;
-      if ( $action eq 'prepare_for_bed' ) {
-          $self->brush_teeth;
-          $self->wash_face;
-      }
-  }
- 
-  My::Parent->add_observer( __PACKAGE__ );
- 
-  $parent->prepare_for_bed # brush, floss, gargle, and wash face
-  $child->prepare_for_bed  # pretend to brush, pretend to wash face
+ # the author is a buffoon and forgot the synopsis code
 
 =head1 DESCRIPTION
 
-If you have ever used Java, you may have run across the
-C<java.util.Observable> class and the C<java.util.Observer>
-interface. With them you can decouple an object from the one or more
-objects that wish to be notified whenever particular events occur.
+This class implements a simple universal event notification interface for
+objects and classes. Observers are registered with observables; observables
+simply announce events without knowing their observers.
 
-These events occur based on a contract with the observed item. They
-may occur at the beginning, in the middle or end of a method. In
-addition, the object B<knows> that it is being observed. It just does
-not know how many or what types of objects are doing the observing. It
-can therefore control when the messages get sent to the obsevers.
+Observables can be either classes or instances. If an observer is registered
+with a class, it will receive notifications from all objects instanciated from
+that class or one of its subclasses. If it is registered with an instance, only
+the events announced by that instance will be relayed to it.
 
-The behavior of the observers is up to you. However, be aware that we
-do not do any error handling from calls to the observers. If an
-observer throws a C<die>, it will bubble up to the observed item and
-require handling there. So be careful.
+=head1 OBSERVER INTERFACE
 
-Throughout this documentation we refer to an 'observed item' or
-'observable item'. This ambiguity refers to the fact that both a class
-and an object can be observed. The behavior when notifying observers
-is identical. The only difference comes in which observers are
-notified. (See L<Observable Classes and Objects> for more
-information.)
+An observer is either a code reference, or a class or object. Code references
+are invoked directly. Classes and objects must respond to the
+C<receive_notification> method.
 
-=head2 Observable Classes and Objects
-
-The observable item does not need to implement any extra methods or
-variables. Whenever it wants to let observers know about a
-state-change or occurrence in the object, it just needs to call
-C<notify_observers()>.
-
-As noted above, whether the observed item is a class or object does
-not matter -- the behavior is the same. The difference comes in
-determining which observers are to be notified:
-
-=over 4
-
-=item *
-
-If the observed item is a class, all objects instantiated from that
-class will use these observers. In addition, all subclasses and
-objects instantiated from the subclasses will use these observers.
-
-=item *
-
-If the observed item is an object, only that particular object will
-use its observers. Once it falls out of scope then the observers will
-no longer be available. (See L<Observable Objects and DESTROY> below.)
-
-=back
-
-Whichever you chose, your documentation should make clear which type
-of observed item observers can expect.
-
-So given the following example:
-
- BEGIN {
-     package Foo;
-     use base qw( Class::Observable );
-     sub new { return bless( {}, $_[0] ) }
-     sub yodel { $_[0]->notify_observers }
- 
-     package Baz;
-     use base qw( Foo );
-     sub yell { $_[0]->notify_observers }
- }
- 
- sub observer_a { print "Observation A from [$_[0]]\n" }
- sub observer_b { print "Observation B from [$_[0]]\n" }
- sub observer_c { print "Observation C from [$_[0]]\n" }
- 
- Foo->add_observer( \&observer_a );
- Baz->add_observer( \&observer_b );
- 
- my $foo = Foo->new;
- print "Yodeling...\n";
- $foo->yodel;
- 
- my $baz_a = Baz->new;
- print "Yelling A...\n";
- $baz_a->yell;
- 
- my $baz_b = Baz->new;
- $baz_b->add_observer( \&observer_c );
- print "Yelling B...\n";
- $baz_b->yell;
-
-You would see something like
-
- Yodeling...
- Observation A from [Foo=HASH(0x80f7acc)]
- Yelling A...
- Observation B from [Baz=HASH(0x815c2b4)]
- Observation A from [Baz=HASH(0x815c2b4)]
- Yelling B...
- Observation C from [Baz=HASH(0x815c344)]
- Observation B from [Baz=HASH(0x815c344)]
- Observation A from [Baz=HASH(0x815c344)]
-
-And since C<Bar> is a child of C<Foo> and each has one class-level
-observer, running either:
-
- my @observers = Baz->get_observers();
- my @observers = $baz_a->get_observers();
-
-would return a two-item list. The first item would be the
-C<observer_b> code reference, the second the C<observer_a> code
-reference. Running:
-
- my @observers = $baz_b->get_observers();
-
-would return a three-item list, including the observer for that
-specific object (C<observer_c> coderef) as well as from its class
-(Baz) and the parent (Foo) of its class.
-
-=head2 Observers
-
-There are three types of observers: classes, objects, and
-subroutines. All three respond to events when C<notify_observers()> is
-called from an observable item. The differences among the three are
-are:
-
-=over 4
-
-=item *
-
-A class or object observer must implement a method C<receive_notification()> which
-is called when a state-change occurs. The name of the subroutine
-observer is irrelevant.
-
-=item *
-
-A class or object observer must take at least two arguments: itself
-and the observed item. The subroutine observer is obligated to take
-only one argument, the observed item.
-
-Both types of observers may also take an action name and a hashref of
-parameters as optional arguments. Whether these are used depends on
-the observed item.
-
-=item *
-
-Object observers can maintain state between responding to
-observations.
-
-=back
-
-Examples:
-
-B<Subroutine observer>:
-
- sub respond {
-     my ( $item, $action, $params ) = @_;
-     return unless ( $action eq 'update' );
-     # ...
- }
- $observable->add_observer( \&respond );
-
-B<Class observer>:
-
- package My::ObserverC;
- 
- sub receive_notification {
-     my ( $class, $item, $action, $params ) = @_;
-     return unless ( $action eq 'update' );
-     # ...
- }
-
-B<Object observer>:
-
- package My::ObserverO;
- 
- sub new {
-     my ( $class, $type ) = @_;
-     return bless ( { type => $type }, $class );
- }
- 
- sub receive_notification {
-     my ( $self, $item, $action, $params ) = @_;
-     return unless ( $action eq $self->{type} );
-     # ...
- }
+The first parameter passed to the observer is the observable that is sending
+the notification. Further parameters depend on the observable.
 
 =head1 METHODS
 
-=head2 Observed Item Methods
+=head2 C<notify_observers( @param )>
 
-B<notify_observers( [ $action, @params ] )>
-
-Called from the observed item, this method sends a message to all
-observers that a state-change has occurred. The observed item can
-optionally include additional information about the type of change
-that has occurred and any additional parameters C<@params> which get
-passed along to each observer. The observed item should indicate in
-its API what information will be passed along to the observers in
-C<$action> and C<@params>.
-
-Returns: Nothing
-
-Example:
+Called from the observed item to notify observers of an event. Any parameters
+are optional. They will be passed to all observers. When given, the second
+parameter should commonly be an event name; likewise the third would commonly
+be a hash reference with further information. However, this is only a
+convention; make sure to document your event parameters.
 
  sub remove {
      my ( $self ) = @_;
      eval { $self->_remove_item_from_datastore };
      if ( $@ ) {
-         $self->notify_observers( 'remove-fail', error_message => $@ );
+         $self->notify_observers( 'remove-fail', { error_message => $@ } );
      }
      else {
          $self->notify_observers( 'remove' );
      }
  }
 
-B<add_observer( @observers )>
+Observers will be notified I<exactly once>. If a particular observer happens to
+be registered with several of the observable classes in the inheritance chain
+and/or also the observable instance, it I<will not> be notified multiple times.
 
-Adds the one or more observers (C<@observer>) to the observed
-item. Each observer can be a class name, object or subroutine -- see
-L<Types of Observers>.
+No implicit exception handling is done when observers are notified. If an
+observer C<die>s, the exception will bubble up to the caller if
+C<notify_observers> and require handling there. So be careful.
 
-Returns: The number of observers now observing the item.
+=head2 C<add_observer( @observer )>
 
-Example:
+Adds one or more observers to the observable. Each observer can be a class
+name, object or subroutine.
 
- # Add a salary check (as a subroutine observer) for a particular
- # person
- my $person = Person->fetch( 3843857 );
- $person->add_observer( \&salary_check );
+The observable will hold onto its observers. If you need them garbage-collected
+before the observable goes out of scope, you will have to explicitly remove
+them from the observable. Of course, if the observable is an instance, it may
+itself be garbage-collected (eg. when it falls out of scope with no other
+references around), in which case it will let go of its observers. For the most
+part, things should Just Work as you expect them, but be careful when you add
+observers to classes, because barring manual intervention, they will stick
+around forever.
+
+=head2 C<delete_observer( @observers )>
+
+Removes one or more given observers from the observed item. Each observer can
+be a class name, object or subroutine.
+
+Note that this only deletes each observer from the observed item itself. It
+does not remove observers from any parent classes. Therefore, if an observer is
+not registered directly with the observed item it will not be removed.
+
+=head2 C<delete_direct_observers()>
+
+Removes from an observable all observers that are registered with it directly.
+Observers from superclasses will not be removed, and if the observable is an
+instance, observers on its class will not be removed.
+
+=head2 C<get_observers()>
+
+Returns all observers for an observable. This is the exact list of observers
+that would be notified when C<notify_observers> is called and includes
+observers on all superclass as well as the class of an instance.
+
+=head2 C<copy_observers_to( $destination_observable )>
+
+Copies all observers from one observable to another. This means literally
+B<all> of the observers -- including class observers!
+
+B<Watch out!> If you do the following, you may be surprised by its behaviour:
+
+ # add an observer to the class
+ Some::Observable->add_observer( 'Observer::One' );
  
- # Add a salary check (as a class observer) for all people
- Person->add_observer( 'Validate::Salary' );
+ # make two instances of the class
+ my $obj1 = Some::Observable->new;
+ my $obj2 = Some::Observable->new;
  
- # Add a salary check (as an object observer) for all people
- my $salary_policy = Company::Policy::Salary->new( 'pretax' );
- Person->add_observer( $salary_policy );
+ # add an object observer to one of them...
+ $obj1->add_observer( 'Observer::Two' );
 
-B<delete_observer( @observers )>
-
-Removes the one or more observers (C<@observer>) from the observed
-item. Each observer can be a class name, object or subroutine -- see
-L<Types of Observers>.
-
-Note that this only deletes each observer from the observed item
-itself. It does not remove observer from any parent
-classes. Therefore, if an observer is not registered directly with the
-observed item nothing will be removed.
-
-Returns: The number of observers now observing the item.
-
-Examples:
-
- # Remove a class observer from an object
- $person->delete_observer( 'Lech::Ogler' );
+ # eh, we'll be lazy and copy to get the
+ # observers onto the second one
+ $obj1->copy_observers_to( $obj2 );
  
- # Remove an object observer from a class
- Person->delete_observer( $salary_policy );
+ # and now we remove the observer from the class
+ Some::Observable->delete_observer( 'Observer::One' );
 
-B<delete_all_observers()>
+Hereafter, C<$obj1> and other instances of C<Some::Observable> will no longer
+notify C<Observer::One> of events, B<but C<$obj2> will continue to do so>!
 
-Removes all observers from the observed item.
+XXX THIS IS A BUG XXX
 
-Note that this only deletes observers registered directly with the
-observed item. It does not clear out observers from any parent
-classes.
+TODO Move away from the implementation in terms of get_observers to one that
+retrieves direct observers and the observers of each superclass separately,
+so it can make sure not to copy class observers from common superclasses.
 
-B<WARNING>: This method was renamed from C<delete_observers>. The
-C<delete_observers> call still works but is deprecated and will
-eventually be removed.
+=head2 C<copy_observers_from( $source_observable )>
 
-Returns: The number of observers removed.
-
-Example:
-
- Person->delete_all_observers();
-
-B<get_observers()>
-
-Returns all observers for an observed item, as well as the observers
-for its class and parents as applicable. See L<Observable Classes and
-Objects> for more information.
-
-Returns: list of observers.
-
-Example:
-
- my @observers = Person->get_observers;
- foreach my $o ( @observers ) {
-     print "Observer is a: ";
-     print "Class"      unless ( ref $o );
-     print "Subroutine" if ( ref $o eq 'CODE' );
-     print "Object"     if ( ref $o and ref $o ne 'CODE' );
-     print "\n";
- }
-
-B<copy_observers( $copy_to_observable )>
-
-Copies all observers from one observed item to another. We get all
-observers from the source, including the observers of parents. (Behind
-the scenes we just use C<get_observers()>, so read that for what we
-copy.)
-
-We make no effort to ensure we don't copy an observer that's already
-watching the object we're copying to. If this happens you will appear
-to get duplicate observations. (But it shouldn't happen often, if
-ever.)
-
-Returns: number of observers copied
-
-Example:
-
- # Copy all observers of the 'Person' class to also observe the
- # 'Address' class
- 
- Person->copy_observers( Address );
- 
- # Copy all observers of a $person to also observe a particular
- # $address
- 
- $person->copy_observers( $address )
-
-B<count_observers()>
-
-Counts the number of observers for an observed item, including ones
-inherited from its class and/or parent classes. See L<Observable
-Classes and Objects> for more information.
-
-=head1 RESOURCES
-
-APIs for C<java.util.Observable> and C<java.util.Observer>. (Docs
-below are included with JDK 1.4 but have been consistent for some
-time.)
-
-L<http://java.sun.com/j2se/1.4/docs/api/java/util/Observable.html>
-
-L<http://java.sun.com/j2se/1.4/docs/api/java/util/Observer.html>
-
-"Observer and Observable", Todd Sundsted,
-L<http://www.javaworld.com/javaworld/jw-10-1996/jw-10-howto_p.html>
-
-"Java Tip 29: How to decouple the Observer/Observable object model", Albert Lopez,
-L<http://www.javaworld.com/javatips/jw-javatip29_p.html>
+Same as
+L<C<copy_observers_to>|copy_observers_to( $destination_observable )>, but in
+the reverse direction. B<All of the same caveats apply>; make sure to read
+about them there.
 
 =head1 SEE ALSO
 
-L<Class::ISA|Class::ISA>
+=over 4
+
+=item *
 
 L<Class::Trigger|Class::Trigger>
+
+=item *
 
 L<Aspect|Aspect>
