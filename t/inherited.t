@@ -1,10 +1,10 @@
-# -*-perl-*-
-
-# $Id$
-
 use strict;
-use lib qw( ./t ./lib );
-use Test::More  tests => 19;
+use warnings;
+
+use Test::More 0.88; # for done_testing
+use Class::Observable;
+
+use lib 't/lib';
 
 BEGIN {
     package Foo;
@@ -16,8 +16,6 @@ BEGIN {
     use base qw( Foo );
     sub yell { $_[0]->notify_observers }
 }
-
-require_ok( 'Class::Observable' );
 
 my @observations = ();
 sub observer_a { push @observations, "Observation A from [" . ref( $_[0] ) . "]" }
@@ -57,3 +55,5 @@ is( $baz_b->delete_all_observers, 1, 'Delete object observers' );
 is( $baz_c->delete_all_observers, 0, 'Delete non-existent object observers' );
 is( Baz->delete_all_observers, 1, 'Delete child observers' );
 is( Foo->delete_all_observers, 1, 'Delete parent observers' );
+
+done_testing;

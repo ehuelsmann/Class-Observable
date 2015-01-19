@@ -1,8 +1,8 @@
-package DeeJay;
-
-# $Id$
-
 use strict;
+use warnings;
+
+package # hide from PAUSE
+	DeeJay;
 
 sub new {
     my ( $class, $playlist, $log ) = @_;
@@ -51,13 +51,10 @@ sub DESTROY {
         $self->{log}->( "DeeJay retiring" );
 }
 
-1;
-
-package DeeJay::Selfish;
+package # hide from PAUSE
+	DeeJay::Selfish;
 
 # This DJ only responds to his/her own songs
-
-use strict;
 
 sub new {
     my ( $class, $my_name, $log ) = @_;
@@ -80,9 +77,8 @@ sub update {
 sub num_updates      { return $_[0]->{update} }
 sub num_updates_self { return $_[0]->{update_self} }
 
-package DeeJay::Helper;
-
-use strict;
+package # hide from PAUSE
+	DeeJay::Helper;
 
 sub new {
     my ( $class, $log ) = @_;

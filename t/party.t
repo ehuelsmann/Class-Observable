@@ -1,16 +1,14 @@
-# -*-perl-*-
-
-# $Id$
-
 use strict;
-use lib qw( ./t ./lib );
-use Test::More  tests => 20;
+use warnings;
 
-require_ok( 'Class::Observable' );
-require_ok( 'Song' );
-require_ok( 'DeeJay' );
+use Test::More 0.88; # for done_testing
+use Class::Observable;
 
-my ( $last_message );
+use lib 't/lib';
+use Song;
+use DeeJay;
+
+my $last_message;
 my $log = sub { $last_message = $_[0] };
 
 my @playlist = ( Song->new( 'U2', 'One', $log ),
@@ -63,3 +61,4 @@ is( Song->delete_observer( $dj ), 1,
 is( Song->delete_all_observers, 1,
     'Delete remaining class-level observers' );
 
+done_testing;

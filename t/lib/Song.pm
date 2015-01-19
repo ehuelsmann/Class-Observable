@@ -1,8 +1,9 @@
-package Song;
-
-# $Id$
-
 use strict;
+use warnings;
+
+package # hide from PAUSE
+	Song;
+
 use base qw( Class::Observable );
 
 sub new {

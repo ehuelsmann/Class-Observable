@@ -1,12 +1,10 @@
+use strict;
+use warnings;
+
 package Class::Observable;
 
-# $Id$
-
-use strict;
 use Class::ISA;
-use Scalar::Util qw( weaken );
-
-$Class::Observable::VERSION = '1.04';
+use Scalar::Util 'weaken';
 
 my %O = ();
 my %P = ();
@@ -223,10 +221,6 @@ sub observer_error {
 1;
 
 __END__
-
-=head1 NAME
-
-Class::Observable - Allow other classes and objects to respond to events in yours
 
 =head1 SYNOPSIS
 
@@ -735,14 +729,3 @@ L<Class::ISA|Class::ISA>
 L<Class::Trigger|Class::Trigger>
 
 L<Aspect|Aspect>
-
-=head1 COPYRIGHT
-
-Copyright (c) 2002-2004 Chris Winters. All rights reserved.
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
-
-=head1 AUTHOR
-
-Chris Winters E<lt>chris@cwinters.comE<gt>
