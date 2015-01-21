@@ -3,7 +3,9 @@ use warnings;
 
 package Class::Observable;
 
-use Class::ISA;
+# ABSTRACT: Allow any number of items to respond to changes in your class/object
+
+use Class::ISA 0.32;
 use Scalar::Util 'weaken';
 
 my %O = ();
@@ -221,6 +223,8 @@ sub observer_error {
 1;
 
 __END__
+
+=pod
 
 =head1 SYNOPSIS
 
