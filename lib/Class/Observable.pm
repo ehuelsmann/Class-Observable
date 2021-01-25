@@ -220,6 +220,11 @@ sub observer_error {
     shift; die @_, "\n";
 }
 
+sub DESTROY {
+    my ( $item ) = @_;
+    delete $O{ $item };
+}
+
 1;
 
 __END__
